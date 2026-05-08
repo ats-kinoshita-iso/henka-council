@@ -15,7 +15,7 @@ Sprint 3 delivers the plugin bootstrap layer and the council-kickoff skill that 
 - `CLAUDE.md` — plugin-side CLAUDE.md loaded when council skills run (§4) **[NEW]**
 - `README.md` — user-facing intro + install instructions including hook installation self-check note (§4) **[NEW]**
 - `LICENSE` — project license file (§4) **[NEW]**
-- `skills/council-kickoff/SKILL.md` — kickoff skill procedure; bootstraps complete `.council/` baseline including config, manifest, three jsonl files, standard-work, five directories (including `proposed/archive/`), and `state/effective-autonomy.json`; configures `andon_takt_seconds: 600` and `dynamic_autonomy_thresholds` with `andon_stop_distinct_originators_required: 2`; writes governance signal to `.harness/config.json`; delegates to `/trine-eval:harness-sprint`; surfaces git merge opt-in one-time setup (§8.1, v2.1 amendments A2/A4/A6/A11) **[NEW]**
+- `skills/council-kickoff/SKILL.md` — kickoff skill procedure; bootstraps complete `.council/` baseline including config, manifest, three jsonl files, standard-work, six directories (including `proposed/archive/`), and `state/effective-autonomy.json`; configures `andon_takt_seconds: 600` and `dynamic_autonomy_thresholds` with `andon_stop_distinct_originators_required: 2`; writes governance signal to `.harness/config.json`; delegates to `/trine-eval:harness-sprint`; surfaces git merge opt-in one-time setup (§8.1, v2.1 amendments A2/A4/A6/A11) **[NEW]**
 
 **Existing files validated in-place (2):**
 - `agents/orchestrator.md` — S1 acceptance baseline; must still pass sprint 2's SC-2 frontmatter checks (§7.1) **[VALIDATED-EXISTING]**
@@ -749,7 +749,7 @@ Present summary of all created files. Offer to run `/council-autorun` to start t
 
 **`.mcp.json` is a placeholder:** Per §3.3 Option A (drop the MCP server, use direct Bash with permission rules), the `.mcp.json` file is an empty or minimal JSON object `{}`. It exists as a placeholder to preserve the path to Option B (MCP-based git server) without activating it.
 
-**Five directories including `proposed/archive/`:** The `proposed/archive/` path is a v2.1 amendment A4 requirement — ratified position papers are moved here after ratification so the `decision-log.jsonl` `nemawashi_walkthrough_version` path references remain resolvable indefinitely. Both `proposed/` and `proposed/archive/` must be named explicitly in the skill.
+**Six directories including `proposed/archive/`:** The `proposed/archive/` path is a v2.1 amendment A4 requirement — ratified position papers are moved here after ratification so the `decision-log.jsonl` `nemawashi_walkthrough_version` path references remain resolvable indefinitely. Both `proposed/` and `proposed/archive/` must be named explicitly in the skill.
 
 **Cross-reference syntax:** The skill file may reference agents and instructions using path-based markdown links to `agents/<name>.md` and `instructions/<name>.md` in the body. These references are prose mentions within the S3 deliverable and do not violate any future-sprint reference prohibition.
 
