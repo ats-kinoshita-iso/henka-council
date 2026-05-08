@@ -894,3 +894,19 @@ Key invariants shown:
 
 **Task taxonomy handoff:** Once this contract is approved by the Evaluator, a sibling `.harness/contracts/sprint-05.tasks.json` is emitted (guarded by `config.taxonomy.emit_tasks_json`, default `true`). It contains one JSON entry per criterion above — both Success Criteria and Should-NOT gates — with stable `task_id`s, `grader_type`, `weight`, `is_gate`, `verification_command`, and `rubric_dimension`. Downstream sprints (regression gate, Batch API, transcript capture, adversarial hygiene) consume that JSON; this markdown contract remains the human-readable source of truth. See `skills/sprint-contract/SKILL.md` for the schema.
 
+
+## Evaluator Review
+
+**Status: APPROVED with Major note**
+
+### Summary
+Round-1 blockers and majors (weight sum off-100%, `notes`→`description` field mismatch, PyYAML silent-skip, and two minors) were all addressed by the Generator's round-2 revision. One new shell-escape issue in SC-8's `windows_abs` regex was identified in round 2; it is implementation-fixable and does not block approval.
+
+### Blockers (must fix before approval)
+- None.
+
+### Major issues
+- M2 (new): SC-8 `windows_abs` regex on line 266 — shell double-quote escaping collapses `\\` to `\` and induces a SyntaxError. Fix during implementation: use `r"[A-Za-z]:\\\\"` (double-quoted raw string) or `r'[A-Za-z]:\x5c'` (hex escape).
+
+### Minor / nice-to-have
+- None from round 2. Round-1 minors (m1, m2) were applied by the Generator.

@@ -70,3 +70,19 @@ Stopped. Current sprint state should be committed.
 - Rubric scores (cli-tool 4-dim): functionality 5, usability 5, error_handling 5, code_quality 5; weighted total 5.00/5
 - Date: 2026-05-08
 - Notes: Generator's one judgment call — contract SC-5 named `--trigger-type sprint-fail` for the level-3 step but that value is NOT in `effective-autonomy.schema.json`'s enum; Generator substituted `consecutive-fail-drop` (which IS in the enum). Evaluator accepted as a contract-side bug, not a generator regression. Pre-evaluation cleanup: orchestrator removed 6 subagent scratch files (`check_*.py`, `gate1_test.py`) from working tree before spawning the implementation evaluator. CLAUDE.md bug observed: the global memory's evidence_class enumeration says `assumed` instead of the spec-correct `speculative` — documentation issue worth fixing.
+## Session 2026-05-08T17:58:42-04:00
+Stopped. Current sprint state should be committed.
+## Session 2026-05-08T18:04:21-04:00
+Stopped. Current sprint state should be committed.
+
+## Sprint 05: S3 — Hooks + Reversibility + Effective-Autonomy Tracking
+- Status: PASS
+- Rounds: 1 evaluation round (no retries needed)
+- Contract negotiation: 2 rounds (round 1 NEEDS REVISION with 2 BLOCKERS/1 MAJOR/2 minors — weights summed to 106% and reference-solution `notes` field rejected by decision-log schema; round 2 APPROVED with 1 Major note about SC-8 windows_abs regex shell-escape)
+- Implementation: 2 commits — 9d8409f (chore: contract revision round 2) + 67aa4cc (feat: 19 files — 4 bash hooks, 4 PowerShell hooks, rotate-audit-log script, CI workflow, hook fixture tests). Generator delegated commit to orchestrator after self-review investigation got stuck on the SC-8 windows-path question.
+- Passed criteria: 11/11 deterministic + 3/3 LLM-judge = 14/14; weighted score 100%
+- Should-NOT gate: 6/6 PASS (Gate 6 cross-sprint scope drift used `26dfae8..HEAD --diff-filter=ACM` baseline; passed cleanly with 21 files all in scope, including the standalone CLAUDE.md fix from commit 30a6c6a)
+- Rubric scores (cli-tool 4-dim): functionality 5, usability 4, error_handling 5, code_quality 4; weighted total 4.60/5
+- Date: 2026-05-08
+- **Process Note: main-thread fallback eval.** Three consecutive Evaluator subagent dispatches read the contract and ran verifications but stopped without writing the eval file. Per harness Operational Notes, the orchestrator authored `.harness/evals/sprint-05-r1.md` and added a `## Process Note` disclosing the fallback. All deterministic verification commands were run verbatim from the contract; LLM-judge dimensions assessed via direct file inspection. The cli-tool `code_quality` dimension was docked from 5 to 4 to reflect the Generator/Evaluator separation regression. The fallback should not fire under normal operation; future sprints should preserve the forked-evaluator path.
+- Contract-side caveats surfaced during eval: (1) SC-2's `subprocess.run(['bash',...])` resolves to WSL stub on Windows host (direct `bash -n` confirms all 4 hooks parse cleanly); (2) SC-8's `windows_abs` regex `r'[A-Za-z]:\\'` over-matches `:\n` printf escape on rotate-audit-log.py:137 (no actual Windows paths exist); (3) SC-11 hook writes `SESSION_STOPPED.` where existing progress.md uses `Stopped.` (cosmetic format drift, marker still satisfies SC-11). All three are contract-side issues, not implementation bugs — graded as PASS with faithful interpretation per harness "broken command" guidance.
