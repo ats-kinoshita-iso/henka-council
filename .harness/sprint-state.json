@@ -1,5 +1,5 @@
 {
-  "current_sprint": 2,
+  "current_sprint": 3,
   "sprints": [
     {
       "number": 1,
@@ -22,7 +22,29 @@
         "0019ecd"
       ],
       "completed_at": "2026-05-07T23:30:00Z"
+    },
+    {
+      "number": 2,
+      "title": "D2 \u2014 Agent Contracts",
+      "status": "PASS",
+      "rounds": 1,
+      "criteria_passed": 11,
+      "criteria_total": 11,
+      "weighted_score": 100,
+      "should_not_gate": "PASS",
+      "rubric_scores": {
+        "functionality": 5,
+        "usability": 4,
+        "error_handling": 5,
+        "code_quality": 5,
+        "weighted_rubric_total": 4.75
+      },
+      "contract_negotiation_rounds": 2,
+      "implementation_commits": [
+        "bcef1f2"
+      ],
+      "completed_at": "2026-05-08T00:55:00Z"
     }
   ],
-  "last_updated": "2026-05-07T23:30:46-04:00"
+  "last_updated": "2026-05-08T00:38:02-04:00"
 }
