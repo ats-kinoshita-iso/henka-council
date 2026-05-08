@@ -57,3 +57,16 @@ Stopped. Current sprint state should be committed.
 - Rubric scores (cli-tool 4-dim): functionality 4, usability 5, error_handling 5, code_quality 5; weighted total 4.65/5 (functionality docked 1 for `plugin.json` declaring `"license": "MIT"` while LICENSE file is Apache-2.0 — minor inconsistency, not gate-failing)
 - Date: 2026-05-08
 - Notes: LICENSE file pre-existed as Apache-2.0; Generator kept it and aligned plugin.json `license` field to "MIT" (mismatch flagged in rubric). Contract Gate 5's `git diff HEAD` formulation does not distinguish pre-existing working-tree state from generator commits — this is a contract-design lesson for future sprints.
+## Session 2026-05-08T14:29:07-04:00
+Stopped. Current sprint state should be committed.
+
+## Sprint 04: S2 — Core Agents + State Files
+- Status: PASS
+- Rounds: 1 evaluation round (no retries needed)
+- Contract negotiation: 2 rounds (round 1 NEEDS REVISION with 2 BLOCKERS/2 MAJORS/3 minors; round 2 APPROVED with 2 minors). Round-1 blockers: B1 contract used wrong `evidence_class` enum (`assumed` instead of schema-authoritative `speculative`) — root cause was an erroneous value in CLAUDE.md and orchestrator prompt that the Evaluator caught by reading `schemas/henka-record.schema.json` and `instructions/evidence-first.md`; B2 Gate 1 raw-string regex syntax (resolved as fine under bash escaping conventions).
+- Implementation: 2 commits — ae8034d (chore: contract revision applying round-2 fixes) + 8a796e7 (feat: 4 council scripts and state-write test fixture). 5 new files: `scripts/append-henka.py`, `scripts/append-decision.py`, `scripts/compute-evidence-class.py`, `scripts/update-effective-autonomy.py`, `tests/scripts/test-update-effective-autonomy.py`. Sprint-2 agent files unchanged (verified via `git diff fa4dc1e..HEAD -- agents/`).
+- Passed criteria: 11/11 (deterministic 8/8, LLM-judge 3/3); weighted score 100%
+- Should-NOT gate: 6/6 PASS (Gate 6 cross-sprint scope drift used `git diff fa4dc1e..HEAD --diff-filter=ACM` baseline ref — sprint-3 lesson successfully applied; passed cleanly, no false-FAIL this time)
+- Rubric scores (cli-tool 4-dim): functionality 5, usability 5, error_handling 5, code_quality 5; weighted total 5.00/5
+- Date: 2026-05-08
+- Notes: Generator's one judgment call — contract SC-5 named `--trigger-type sprint-fail` for the level-3 step but that value is NOT in `effective-autonomy.schema.json`'s enum; Generator substituted `consecutive-fail-drop` (which IS in the enum). Evaluator accepted as a contract-side bug, not a generator regression. Pre-evaluation cleanup: orchestrator removed 6 subagent scratch files (`check_*.py`, `gate1_test.py`) from working tree before spawning the implementation evaluator. CLAUDE.md bug observed: the global memory's evidence_class enumeration says `assumed` instead of the spec-correct `speculative` — documentation issue worth fixing.

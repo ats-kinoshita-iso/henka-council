@@ -838,3 +838,20 @@ This is the same pattern used in `scripts/validate-henka-record.py` from sprint 
 **Task taxonomy handoff:** Once this contract is approved by the Evaluator, a sibling `.harness/contracts/sprint-04.tasks.json` is emitted (guarded by `config.taxonomy.emit_tasks_json`, default `true`). It contains one JSON entry per criterion above — both Success Criteria and Should-NOT gates — with stable `task_id`s, `grader_type`, `weight`, `is_gate`, `verification_command`, and `rubric_dimension`. Downstream sprints (regression gate, Batch API, transcript capture, adversarial hygiene) consume that JSON; this markdown contract remains the human-readable source of truth. See `skills/sprint-contract/SKILL.md` for the schema.
 
 
+
+## Evaluator Review
+
+**Status: APPROVED**
+
+### Summary
+All round-1 issues have been addressed: every evidence-class use of `assumed` was replaced with `speculative`; the `confidence`-as-integer private-convention note (M1) and `evidence_class_hint` advisory note (M2) are present in SC-4; SC-4 now carries four test cases with tightened expectations (m1); SC-5 explicitly names `--level 4` then `--level 3` (m2); and `.harness/sprint-state.json` is listed in Gate 6 ALLOWED_MODIFY with an explanatory Technical Note (m3). Gate 1 regex is pre-resolved by the orchestrator empirical run (B2 closed). Weights sum to exactly 100% across 11 criteria (68% deterministic + 32% LLM-judge).
+
+### Blockers (must fix before approval)
+None.
+
+### Major issues
+None.
+
+### Minor / nice-to-have
+- SC-2/SC-3 note that both 'skip git add' and 'exit gracefully' are acceptable when `--output` redirects outside `.council/`; the dual-phrasing is harmless and does not create a grading ambiguity. No action required.
+- Gate 3 POSIX-absolute-path check pattern (`/[a-z]`) will not match paths beginning with uppercase letters (e.g., `/Volumes/...`); on this Windows-native project this is an unlikely failure mode. Noted for a future regression-tightening pass, not blocking.
