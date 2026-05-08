@@ -1,5 +1,28 @@
 {
-  "current_sprint": 1,
-  "sprints": [],
-  "last_updated": "2026-05-07T22:27:00Z"
+  "current_sprint": 2,
+  "sprints": [
+    {
+      "number": 1,
+      "title": "D1 \u00e2\u20ac\u201d Schema Definitions",
+      "status": "PASS",
+      "rounds": 1,
+      "criteria_passed": 9,
+      "criteria_total": 9,
+      "weighted_score": 100,
+      "should_not_gate": "PASS",
+      "rubric_scores": {
+        "functionality": 5,
+        "correctness": 5,
+        "code_quality": 4,
+        "testing": 5,
+        "generator_evaluator_separation": 5
+      },
+      "contract_negotiation_rounds": 2,
+      "implementation_commits": [
+        "0019ecd"
+      ],
+      "completed_at": "2026-05-07T23:30:00Z"
+    }
+  ],
+  "last_updated": "2026-05-07T23:30:46-04:00"
 }
