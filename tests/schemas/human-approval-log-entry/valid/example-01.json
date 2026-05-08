@@ -1,0 +1,9 @@
+{
+  "approval_id": "APPR-0001",
+  "timestamp": "2026-05-07T12:00:00Z",
+  "approval_type": "minor-correction",
+  "status": "approved",
+  "requested_by_agent": "orchestrator",
+  "sprint_context": 1,
+  "description": "Approve minor correction: added missing example-03.json fixture."
+}

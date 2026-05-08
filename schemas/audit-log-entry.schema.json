@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "audit-log-entry.schema.json",
+  "title": "AuditLogEntry",
+  "description": "A single audit log record appended to audit-log.jsonl by the PostToolUse hook. Tracks all tool invocations and governance events.",
+  "type": "object",
+  "required": ["entry_id", "timestamp", "event_type", "agent_id"],
+  "properties": {
+    "entry_id": {
+      "type": "string",
+      "description": "Unique identifier for this audit entry."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this event was recorded."
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "tool-call",
+        "andon-signal",
+        "andon-resolution",
+        "autonomy-floor-change",
+        "verification-spot-check",
+        "audit-log-rotation",
+        "session-start",
+        "session-stop",
+        "sprint-start",
+        "sprint-end"
+      ],
+      "description": "Type of event being logged."
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Identifier of the agent or hook that generated this entry."
+    },
+    "sprint_context": {
+      "type": ["integer", "null"],
+      "description": "Sprint number at the time of this event, or null if outside sprint execution."
+    },
+    "tool_name": {
+      "type": "string",
+      "description": "Name of the Claude Code tool invoked (for tool-call events)."
+    },
+    "tool_input_summary": {
+      "type": "string",
+      "description": "Brief summary of the tool input (not full content; privacy-safe)."
+    },
+    "tool_outcome": {
+      "type": "string",
+      "enum": ["success", "blocked", "error"],
+      "description": "Outcome of the tool invocation."
+    },
+    "andon_pull_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Running count of andon signals issued by this agent (for pull-rate anomaly detection per Q14)."
+    },
+    "verification_spot_check": {
+      "type": "boolean",
+      "description": "True if this entry records a verification spot-check (§8.2 Step 1C)."
+    },
+    "verification_command": {
+      "type": "string",
+      "description": "The verification command that was re-run (for verification-spot-check entries)."
+    },
+    "verification_result": {
+      "type": "string",
+      "enum": ["match", "diverged", "error", "allowlist-rejected"],
+      "description": "Result of the verification spot-check."
+    },
+    "linked_henka_id": {
+      "type": "string",
+      "description": "HK-NNNN of a related henkaten record, if any."
+    },
+    "linked_decision_id": {
+      "type": "string",
+      "description": "DEC-NNNN of a related decision, if any."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional context or notes for this entry."
+    }
+  },
+  "additionalProperties": false
+}

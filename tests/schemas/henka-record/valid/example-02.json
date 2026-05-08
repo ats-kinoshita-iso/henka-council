@@ -1,0 +1,37 @@
+{
+  "henka_id": "HK-0002",
+  "sprint_context": 2,
+  "fourM_axis": "Man",
+  "category": "agent-capability-change",
+  "change_origin": "passive",
+  "impact_level": "informational",
+  "description": "Model version claude-sonnet-4-6 detected in sprint 2 execution, differs from sprint 1.",
+  "affected_artifacts": [
+    "agents/orchestrator.md"
+  ],
+  "response_type": "log-only",
+  "evidence": [
+    {
+      "claim": "Model version string changed between sprints 1 and 2",
+      "evidence_class": "observed",
+      "confidence": "medium",
+      "verification": "grep -r 'claude-sonnet' .harness/transcripts/",
+      "source_file": ".harness/transcripts/sprint-02-r1.json",
+      "source_line_range": "1-5"
+    },
+    {
+      "claim": "Model upgrade was not listed in sprint 2 scope",
+      "evidence_class": "inferred",
+      "confidence": "medium"
+    }
+  ],
+  "andon_signal": {
+    "type": "alert",
+    "reason": "Passive agent-capability-change detected mid-cycle; monitoring for behavioral drift",
+    "evidence": ["grep -r 'claude-sonnet' .harness/transcripts/"],
+    "swarm_request": ["architect", "scope-guardian"]
+  },
+  "status": "assessed",
+  "detected_at": "2026-05-07T14:00:00Z",
+  "detected_by_agent": "henkaten-detector"
+}

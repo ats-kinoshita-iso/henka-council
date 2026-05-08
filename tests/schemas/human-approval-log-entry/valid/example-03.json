@@ -1,0 +1,12 @@
+{
+  "approval_id": "APPR-0003",
+  "timestamp": "2026-05-09T14:00:00Z",
+  "approval_type": "autonomy-restore",
+  "status": "approved",
+  "requested_by_agent": "retrospective",
+  "sprint_context": 3,
+  "description": "Restore nominal autonomy level from L3 to L4 after 2 consecutive PASS evals.",
+  "linked_decision_id": "DEC-0005",
+  "effective_autonomy_at_request": 3,
+  "revision_notes": "Please include the evidence verification commands."
+}

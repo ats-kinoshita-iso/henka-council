@@ -1,0 +1,13 @@
+{
+  "level": 3,
+  "last_change": "2026-05-01T10:00:00Z",
+  "reason": "Nominal level.",
+  "trigger_history": [
+    {
+      "trigger_type": "unknown-trigger",
+      "timestamp": "2026-05-01T10:00:00Z",
+      "from_level": 4,
+      "to_level": 3
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "entry_id": "AUD-0002",
+  "timestamp": "2026-05-07T13:00:00Z",
+  "event_type": "andon-signal",
+  "agent_id": "henkaten-detector",
+  "sprint_context": 1,
+  "andon_pull_count": 1,
+  "linked_henka_id": "HK-0002",
+  "notes": "Alert issued due to passive capability change detected mid-sprint."
+}

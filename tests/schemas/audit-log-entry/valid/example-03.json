@@ -1,0 +1,12 @@
+{
+  "entry_id": "AUD-0003",
+  "timestamp": "2026-05-07T14:00:00Z",
+  "event_type": "verification-spot-check",
+  "agent_id": "retrospective",
+  "sprint_context": 1,
+  "verification_spot_check": true,
+  "verification_command": "python -m json.tool schemas/henka-record.schema.json",
+  "verification_result": "match",
+  "linked_decision_id": "DEC-0001",
+  "notes": "Spot-check of henka-record schema integrity after sprint-01 implementation."
+}

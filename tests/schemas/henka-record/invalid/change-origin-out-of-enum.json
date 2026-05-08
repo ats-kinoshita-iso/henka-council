@@ -1,0 +1,20 @@
+{
+  "henka_id": "HK-0002",
+  "sprint_context": 1,
+  "fourM_axis": "Man",
+  "category": "agent-capability-change",
+  "change_origin": "spontaneous",
+  "impact_level": "informational",
+  "description": "Invalid change_origin value — v2 enum violation (R1).",
+  "affected_artifacts": ["agents/henkaten-detector.md"],
+  "response_type": "log-only",
+  "evidence": [
+    {
+      "claim": "Test claim",
+      "evidence_class": "speculative",
+      "confidence": "low"
+    }
+  ],
+  "status": "classified",
+  "detected_at": "2026-05-07T12:00:00Z"
+}

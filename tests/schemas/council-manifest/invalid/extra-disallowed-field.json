@@ -1,0 +1,14 @@
+{
+  "manifest_version": "0.1.0",
+  "created_at": "2026-05-07T12:00:00Z",
+  "agents": [
+    {
+      "agent_id": "orchestrator",
+      "agent_file": "agents/orchestrator.md",
+      "autonomy_level": 4,
+      "status": "active",
+      "secret_mode": true
+    }
+  ],
+  "undocumented_key": "this should not be here"
+}

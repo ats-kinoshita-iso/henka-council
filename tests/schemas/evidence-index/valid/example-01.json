@@ -1,0 +1,12 @@
+{
+  "index_version": "1.0.0",
+  "created_at": "2026-05-01T00:00:00Z",
+  "entries": [
+    {
+      "citation_id": "EV-0001",
+      "evidence_class": "observed",
+      "claim": "Model was upgraded from claude-3-sonnet to claude-3-opus in sprint 3.",
+      "confidence": "high"
+    }
+  ]
+}

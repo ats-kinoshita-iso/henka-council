@@ -1,0 +1,7 @@
+{
+  "conflict_id": "CONF-0997",
+  "timestamp": "2026-05-07T10:00:00Z",
+  "conflict_type": "custom",
+  "resolution_status": "deferred",
+  "undocumented_field": "this field is not in the schema"
+}

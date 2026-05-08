@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "integration-signal.schema.json",
+  "title": "IntegrationSignal",
+  "description": "The governance integration signal written to .harness/config.json by /council-kickoff. Models the 'governance' key that informs trine-eval of council presence. Includes taxonomy_version '2.0' per §11.10.",
+  "type": "object",
+  "required": ["governance"],
+  "properties": {
+    "governance": {
+      "type": "object",
+      "description": "Governance configuration block written to .harness/config.json at kickoff.",
+      "required": ["enabled", "plugin", "council_state_path", "taxonomy_version"],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the henka-council governance layer is active."
+        },
+        "plugin": {
+          "type": "string",
+          "description": "Name of the governance plugin.",
+          "enum": ["henka-council"]
+        },
+        "council_state_path": {
+          "type": "string",
+          "description": "Path to the council state directory (always .council/).",
+          "pattern": "^\\.council/$"
+        },
+        "taxonomy_version": {
+          "type": "string",
+          "description": "Version of the 4M henkaten taxonomy in use.",
+          "enum": ["2.0"]
+        },
+        "review_frequency": {
+          "type": "string",
+          "enum": ["every-sprint", "every-other-sprint", "manual"],
+          "description": "How often the council convenes."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

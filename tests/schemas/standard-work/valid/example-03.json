@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "updated_at": "2026-05-10T10:00:00Z",
+  "updated_by": "retrospective-agent",
+  "ratified_decision_id": "DEC-0010",
+  "sizing_heuristics": {
+    "max_criteria_per_sprint": 10,
+    "max_files_in_scope": 20,
+    "recommended_weight_spread": "1-2 heavy (15%) + 2-3 medium (10-12%) + 3-4 light (5-8%)"
+  },
+  "procedures": [
+    {
+      "procedure_id": "PROC-001",
+      "name": "Sprint kickoff",
+      "steps": ["Read spec", "Write contract", "Await approval"]
+    },
+    {
+      "procedure_id": "PROC-003",
+      "name": "Andon resolution",
+      "description": "Handle an andon signal raised by any agent.",
+      "steps": [
+        "Identify originating agent and signal type (alert or stop)",
+        "Assemble swarm if swarm_request is populated",
+        "Resolve within takt time for alerts; halt until user resume for stops",
+        "Append resolution to decision-log.jsonl"
+      ]
+    }
+  ],
+  "evaluation_improvements": [
+    {
+      "improvement_id": "EI-CF-001",
+      "description": "Add SC-5 mega-verification command to all schema sprints.",
+      "implemented_in_sprint": 1
+    }
+  ],
+  "workflow_notes": [
+    {
+      "note_id": "WN-CF-001",
+      "description": "Always commit after each logical unit of work to ensure SC-5 can be verified at any checkpoint."
+    }
+  ]
+}

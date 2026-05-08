@@ -1,0 +1,10 @@
+{
+  "entry_id": "AUD-0001",
+  "timestamp": "2026-05-07T12:00:00Z",
+  "event_type": "tool-call",
+  "agent_id": "orchestrator",
+  "sprint_context": 1,
+  "tool_name": "Write",
+  "tool_input_summary": "Write schemas/henka-record.schema.json",
+  "tool_outcome": "success"
+}

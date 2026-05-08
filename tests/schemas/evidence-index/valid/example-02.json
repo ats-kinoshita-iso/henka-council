@@ -1,0 +1,29 @@
+{
+  "index_version": "1.2.0",
+  "created_at": "2026-05-03T08:00:00Z",
+  "updated_at": "2026-05-05T16:00:00Z",
+  "total_entries": 2,
+  "entries": [
+    {
+      "citation_id": "EV-0010",
+      "evidence_class": "observed",
+      "claim": "CI pipeline failure rate increased from 5% to 15% after dependency update.",
+      "confidence": "high",
+      "verification": "python -m json.tool .council/state/audit-log.json",
+      "source_file": ".council/state/audit-log.json",
+      "sprint_context": 4,
+      "gathered_at": "2026-05-03T08:00:00Z",
+      "gathered_by_agent": "archaeologist"
+    },
+    {
+      "citation_id": "EV-0011",
+      "evidence_class": "inferred",
+      "claim": "Dependency update likely caused the increased failure rate based on timing correlation.",
+      "confidence": "medium",
+      "referenced_by": ["HK-0015", "DEC-0007"],
+      "sprint_context": 4,
+      "gathered_at": "2026-05-03T08:30:00Z",
+      "gathered_by_agent": "sentinel"
+    }
+  ]
+}

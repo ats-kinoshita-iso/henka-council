@@ -1,0 +1,19 @@
+{
+  "henka_id": "HK-0001",
+  "sprint_context": 1,
+  "category": "scope-change",
+  "change_origin": "active",
+  "impact_level": "actionable",
+  "description": "Missing fourM_axis field — v2 required field.",
+  "affected_artifacts": ["schemas/henka-record.schema.json"],
+  "response_type": "log-only",
+  "evidence": [
+    {
+      "claim": "Test claim",
+      "evidence_class": "inferred",
+      "confidence": "low"
+    }
+  ],
+  "status": "classified",
+  "detected_at": "2026-05-07T12:00:00Z"
+}

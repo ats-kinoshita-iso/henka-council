@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "conflict-resolution-entry.schema.json",
+  "title": "ConflictResolutionEntry",
+  "description": "A record of a conflict between agents or between agent output and governance rules, and how it was resolved.",
+  "type": "object",
+  "required": ["conflict_id", "timestamp", "conflict_type", "resolution_status"],
+  "properties": {
+    "conflict_id": {
+      "type": "string",
+      "description": "Unique identifier for this conflict record.",
+      "pattern": "^CONF-[0-9]{4,}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the conflict was detected."
+    },
+    "conflict_type": {
+      "type": "string",
+      "enum": [
+        "agent-disagreement",
+        "evidence-contradiction",
+        "scope-violation",
+        "governance-rule-violation",
+        "andon-suppressed",
+        "reversibility-dispute",
+        "custom"
+      ],
+      "description": "Classification of the conflict."
+    },
+    "resolution_status": {
+      "type": "string",
+      "enum": ["resolved", "escalated", "deferred", "overridden-by-user"],
+      "description": "Current status of conflict resolution."
+    },
+    "sprint_context": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Sprint number during which this conflict occurred."
+    },
+    "agents_in_conflict": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Agent IDs involved in the conflict."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of the conflict."
+    },
+    "conflicting_claims": {
+      "type": "array",
+      "description": "The specific claims or outputs that are in conflict.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "agent_id": {"type": "string"},
+          "claim": {"type": "string"},
+          "evidence_class": {
+            "type": "string",
+            "enum": ["observed", "inferred", "speculative"]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "resolution_method": {
+      "type": "string",
+      "enum": [
+        "orchestrator-ruling",
+        "user-input",
+        "nemawashi-walkthrough",
+        "andon-escalation",
+        "evidence-weight"
+      ],
+      "description": "Method used to resolve the conflict."
+    },
+    "resolution_description": {
+      "type": "string",
+      "description": "How the conflict was resolved."
+    },
+    "linked_decision_id": {
+      "type": "string",
+      "description": "DEC-NNNN of the decision that resolved this conflict.",
+      "pattern": "^DEC-[0-9]{4,}$"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this conflict was resolved."
+    }
+  },
+  "additionalProperties": false
+}

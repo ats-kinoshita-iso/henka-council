@@ -1,0 +1,37 @@
+{
+  "manifest_version": "0.1.0",
+  "created_at": "2026-05-07T12:00:00Z",
+  "updated_at": "2026-05-07T16:00:00Z",
+  "plugin_version": "0.1.0",
+  "agents": [
+    {
+      "agent_id": "orchestrator",
+      "agent_file": "agents/orchestrator.md",
+      "autonomy_level": 4,
+      "status": "active",
+      "context": "inherit",
+      "tools": ["Read", "Glob", "Grep", "Bash", "Write", "Task"],
+      "in_default_fanout": true
+    },
+    {
+      "agent_id": "architect",
+      "agent_file": "agents/architect.md",
+      "autonomy_level": 2,
+      "status": "active",
+      "context": "fork",
+      "tools": ["Read", "Glob", "Grep"],
+      "in_default_fanout": true
+    },
+    {
+      "agent_id": "qa-regression",
+      "agent_file": "agents/qa-regression.md",
+      "autonomy_level": 2,
+      "status": "proposed",
+      "context": "fork",
+      "tools": ["Read", "Glob", "Grep"],
+      "in_default_fanout": false
+    }
+  ],
+  "active_sprint": null,
+  "council_state_path": ".council/"
+}

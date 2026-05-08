@@ -1,0 +1,43 @@
+{
+  "version": "1.1.0",
+  "updated_at": "2026-05-08T09:00:00Z",
+  "updated_by": "retrospective-agent",
+  "ratified_decision_id": "DEC-0003",
+  "sizing_heuristics": {
+    "max_criteria_per_sprint": 13,
+    "max_files_in_scope": 30,
+    "recommended_weight_spread": "2-3 heavy criteria (15%+) + 3-4 light (5-10%)"
+  },
+  "procedures": [
+    {
+      "procedure_id": "PROC-001",
+      "name": "Sprint kickoff",
+      "description": "Initialize a new sprint by reading spec and writing a contract.",
+      "steps": [
+        "Read .harness/spec.md and .harness/sprints.json",
+        "Read prior sprint contracts in .harness/contracts/",
+        "Write sprint contract to .harness/contracts/sprint-NN.md",
+        "Await evaluator approval"
+      ],
+      "applicable_to": ["all-sprints"]
+    },
+    {
+      "procedure_id": "PROC-002",
+      "name": "Henkaten detection",
+      "steps": [
+        "Run henkaten-detector at PostToolUse hook",
+        "Classify change along 4M axis",
+        "Determine impact_level and response_type",
+        "Append to henka-register.jsonl"
+      ]
+    }
+  ],
+  "failure_patterns": [
+    {
+      "pattern_id": "FP-CF-001",
+      "description": "Overloaded sprint scope causes fixture deficit.",
+      "mitigation": "Cap at max_files_in_scope; split large deliverables across sprints.",
+      "observed_in_sprints": [1]
+    }
+  ]
+}

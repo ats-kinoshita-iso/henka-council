@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-05-07T12:00:00Z",
+  "procedures": [
+    {
+      "procedure_id": "PROC-001",
+      "name": "Sprint kickoff",
+      "steps": [
+        "Read .harness/spec.md and .harness/sprints.json",
+        "Write sprint contract to .harness/contracts/sprint-NN.md",
+        "Await evaluator approval before implementation"
+      ]
+    }
+  ]
+}

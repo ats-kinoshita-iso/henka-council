@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "standard-work.schema.json",
+  "title": "StandardWork",
+  "description": "Standard work procedures for the council governance layer (.council/standard-work.json). Evolves through per-cycle PDCA retrospectives.",
+  "type": "object",
+  "required": ["version", "updated_at", "procedures"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Semantic version of this standard-work document.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the last update."
+    },
+    "updated_by": {
+      "type": "string",
+      "description": "Agent or human that last updated this document."
+    },
+    "ratified_decision_id": {
+      "type": "string",
+      "description": "DEC-NNNN identifier of the decision that ratified the most recent change.",
+      "pattern": "^DEC-[0-9]{4,}$"
+    },
+    "sizing_heuristics": {
+      "type": "object",
+      "description": "Sprint sizing guidance derived from project history.",
+      "properties": {
+        "max_criteria_per_sprint": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_files_in_scope": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "recommended_weight_spread": {
+          "type": "string",
+          "description": "Recommended weight distribution pattern (e.g. '2-3 heavy criteria + 3-4 light')."
+        }
+      }
+    },
+    "failure_patterns": {
+      "type": "array",
+      "description": "Documented failure patterns with mitigations (FP-CF-001 through FP-CF-005 seed the initial doc).",
+      "items": {
+        "type": "object",
+        "required": ["pattern_id", "description", "mitigation"],
+        "properties": {
+          "pattern_id": {
+            "type": "string",
+            "description": "Unique identifier for this failure pattern (e.g. FP-CF-001)."
+          },
+          "description": {
+            "type": "string"
+          },
+          "mitigation": {
+            "type": "string"
+          },
+          "observed_in_sprints": {
+            "type": "array",
+            "items": {"type": "integer"}
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "evaluation_improvements": {
+      "type": "array",
+      "description": "Improvements to evaluation methodology (EI-CF-001, EI-CF-002).",
+      "items": {
+        "type": "object",
+        "required": ["improvement_id", "description"],
+        "properties": {
+          "improvement_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "implemented_in_sprint": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "workflow_notes": {
+      "type": "array",
+      "description": "Workflow guidance notes (WN-CF-001 through WN-CF-006).",
+      "items": {
+        "type": "object",
+        "required": ["note_id", "description"],
+        "properties": {
+          "note_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "procedures": {
+      "type": "array",
+      "description": "Step-by-step governance procedures.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["procedure_id", "name", "steps"],
+        "properties": {
+          "procedure_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {"type": "string"},
+            "minItems": 1
+          },
+          "applicable_to": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Conditions or sprint types this procedure applies to."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

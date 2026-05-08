@@ -1,0 +1,6 @@
+{
+  "council_version": "0.1.0",
+  "target_project": "my-app",
+  "autonomy_level": 4,
+  "review_frequency": "per-commit"
+}

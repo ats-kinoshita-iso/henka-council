@@ -1,0 +1,7 @@
+{
+  "approval_id": "APPR-9003",
+  "timestamp": "2026-05-07T12:00:00Z",
+  "approval_type": "autonomy-restore",
+  "status": "pending",
+  "effective_autonomy_at_request": 6
+}

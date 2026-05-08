@@ -1,0 +1,25 @@
+{
+  "conflict_id": "CONF-0105",
+  "timestamp": "2026-05-07T08:15:00Z",
+  "conflict_type": "governance-rule-violation",
+  "resolution_status": "overridden-by-user",
+  "sprint_context": 5,
+  "agents_in_conflict": ["henkaten-recorder", "orchestrator"],
+  "description": "Henkaten recorder attempted to log a decision at autonomy level 0, which requires human approval. The agent bypassed the human-approval gate.",
+  "conflicting_claims": [
+    {
+      "agent_id": "henkaten-recorder",
+      "claim": "Decision was low-risk and did not require human approval",
+      "evidence_class": "inferred"
+    },
+    {
+      "agent_id": "orchestrator",
+      "claim": "Autonomy level 0 mandates human approval for all decisions",
+      "evidence_class": "observed"
+    }
+  ],
+  "resolution_method": "user-input",
+  "resolution_description": "User reviewed the conflict and confirmed orchestrator interpretation. Agent was instructed to request human approval.",
+  "linked_decision_id": "DEC-0088",
+  "resolved_at": "2026-05-07T09:00:00Z"
+}

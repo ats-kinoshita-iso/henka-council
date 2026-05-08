@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "decision-log-entry.schema.json",
+  "title": "DecisionLogEntry",
+  "description": "A single decision record appended to decision-log.jsonl. Captures governance decisions with v2 fields for reversibility (R9), effective autonomy (R10), nemawashi walkthrough (R5), and andon resolution (R3).",
+  "type": "object",
+  "required": [
+    "decision_id",
+    "timestamp",
+    "decision_type",
+    "decision_outcome",
+    "autonomy_level_used",
+    "effective_autonomy_at_decision",
+    "reversibility"
+  ],
+  "properties": {
+    "decision_id": {
+      "type": "string",
+      "pattern": "^DEC-[0-9]{4,}$",
+      "description": "Unique identifier for this decision. Format: DEC-NNNN."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this decision was made."
+    },
+    "council_agents_involved": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Agent IDs that contributed to this decision."
+    },
+    "evidence_cited": {
+      "type": "array",
+      "items": {"type": "object"},
+      "description": "Evidence items cited in support of this decision."
+    },
+    "decision_type": {
+      "type": "string",
+      "description": "Category of decision (e.g. course-correction-minor, course-correction-major, andon-resolution, yokoten-ratification)."
+    },
+    "decision_outcome": {
+      "type": "string",
+      "enum": ["applied", "proposed", "rejected", "deferred", "superseded"],
+      "description": "Final outcome of this decision."
+    },
+    "applied_automatically": {
+      "type": "boolean",
+      "description": "True if the orchestrator applied this automatically (Level 3 minor reversible)."
+    },
+    "user_approval_required": {
+      "type": "boolean",
+      "description": "True if this decision required explicit user approval."
+    },
+    "user_approval_status": {
+      "type": ["string", "null"],
+      "enum": ["approved", "rejected", "revised", "pending", null],
+      "description": "Current status of user approval, or null if not required."
+    },
+    "affected_files": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "File paths modified by this decision."
+    },
+    "linked_henka_id": {
+      "type": "string",
+      "description": "HK-NNNN identifier of a related henkaten record, if any."
+    },
+    "sprint_context": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Sprint number during which this decision was made."
+    },
+    "autonomy_level_used": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5,
+      "description": "Nominal autonomy level of the agent that made this decision."
+    },
+    "effective_autonomy_at_decision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5,
+      "description": "Effective autonomy level at the time of decision (may differ from nominal due to dynamic floor R10). R10."
+    },
+    "reversibility": {
+      "type": "string",
+      "enum": ["reversible", "irreversible"],
+      "description": "Whether the action(s) taken by this decision are reversible. Irreversible decisions auto-escalate to Level 5 regardless of nominal level (R9)."
+    },
+    "nemawashi_walkthrough_version": {
+      "type": ["string", "null"],
+      "description": "Filename of the nemawashi position paper (e.g. DEC-0042.md or DEC-0042-rev2.md). Null for minor single-prompt decisions. R5."
+    },
+    "andon_resolution": {
+      "type": "object",
+      "description": "Present if this decision resolved an andon signal. R3.",
+      "properties": {
+        "originator": {
+          "type": "string",
+          "description": "Agent ID that issued the original andon signal."
+        },
+        "swarm": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Agent IDs included in the swarm response."
+        },
+        "resolution": {
+          "type": "string",
+          "enum": ["resumed", "escalated_to_stop", "user_intervention"],
+          "description": "How the andon signal was resolved."
+        },
+        "duration_seconds": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Wall-clock seconds from andon signal to resolution."
+        }
+      },
+      "required": ["originator", "resolution"],
+      "additionalProperties": false
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of what was decided and why."
+    }
+  },
+  "additionalProperties": false
+}
