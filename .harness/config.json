@@ -1,0 +1,30 @@
+{
+  "mode": "standard",
+  "project_type": "cli-tool",
+  "rubric": "cli-tool",
+  "max_retries": 3,
+  "pass_threshold": {
+    "per_dimension_minimum": 2,
+    "critical_dimensions": ["functionality"],
+    "critical_minimum": 3
+  },
+  "contract_negotiation_rounds": 2,
+  "git_checkpoint": true,
+  "components_enabled": {
+    "planner": true,
+    "generator_subagent": true,
+    "contract_negotiation": true,
+    "sprint_decomposition": true,
+    "per_sprint_aci_review": true,
+    "calibration_writes": true,
+    "eval_summary": true
+  },
+  "governance": {
+    "enabled": true,
+    "plugin": "henka-council",
+    "council_state_path": ".council/",
+    "review_frequency": "every-sprint",
+    "taxonomy_version": "2.0",
+    "note": "henka-council is the project being built; .council/ will be created by /council-kickoff after this plugin's S1 ships. This governance key is informational only during self-build."
+  }
+}
