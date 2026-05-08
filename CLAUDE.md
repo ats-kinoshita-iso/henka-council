@@ -104,7 +104,7 @@ setup step.
 
 All agent outputs must include:
 
-- `evidence_class`: one of `observed`, `inferred`, `assumed`
+- `evidence_class`: one of `observed`, `inferred`, `speculative`
 - `confidence`: integer 1–5
 - For `observed` claims: a `verification` field containing a conformant command
   from the verification syntax allowlist
