@@ -1,0 +1,72 @@
+name: Hook and Script Tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Python dependencies
+        run: pip install jsonschema pyyaml
+
+      - name: Run Bash hook fixture tests (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -e
+          bash tests/hooks/test-enforce-append-only.sh
+          bash tests/hooks/test-enforce-reversibility.sh
+          bash tests/hooks/test-log-tool-call.sh
+          bash tests/hooks/test-rotate-audit-log.sh
+
+      - name: Run PowerShell hook fixture tests (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh tests/hooks/win/test-enforce-append-only.ps1
+          pwsh tests/hooks/win/test-enforce-reversibility.ps1
+          pwsh tests/hooks/win/test-log-tool-call.ps1
+          pwsh tests/hooks/win/test-rotate-audit-log.ps1
+
+      - name: Run Python rotation fixture test
+        run: python tests/hooks/test-rotate-audit-log.py
+
+      - name: Validate CI YAML (self-check)
+        run: |
+          python -c "
+          import pathlib, sys
+          text = pathlib.Path('.github/workflows/ci.yml').read_text(encoding='utf-8')
+          errors = []
+          if 'ubuntu-latest' not in text:
+              errors.append('CI YAML: missing ubuntu-latest platform')
+          if 'windows-latest' not in text:
+              errors.append('CI YAML: missing windows-latest platform')
+          try:
+              import yaml
+              yaml.safe_load(text)
+          except Exception as e:
+              errors.append(f'CI YAML parse error: {e}')
+          if errors:
+              for e in errors: print(e)
+              sys.exit(1)
+          print('CI YAML VALID')
+          "
