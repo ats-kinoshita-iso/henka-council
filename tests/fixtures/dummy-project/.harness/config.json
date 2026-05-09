@@ -1,0 +1,11 @@
+{
+  "mode": "minimal",
+  "project_type": "cli-tool",
+  "rubric": "cli-tool",
+  "max_retries": 1,
+  "components_enabled": {
+    "planner": false,
+    "generator_subagent": false,
+    "contract_negotiation": false
+  }
+}

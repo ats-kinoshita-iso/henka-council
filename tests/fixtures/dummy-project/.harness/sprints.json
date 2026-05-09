@@ -1,0 +1,18 @@
+{
+  "sprints": [
+    {
+      "number": 1,
+      "title": "Trivial Sprint 1 — hello-world function",
+      "features": ["src/hello.py — single hello-world function"],
+      "estimated_complexity": "low",
+      "dependencies": []
+    },
+    {
+      "number": 2,
+      "title": "Trivial Sprint 2 — add test",
+      "features": ["tests/test_hello.py — single assertion"],
+      "estimated_complexity": "low",
+      "dependencies": [1]
+    }
+  ]
+}

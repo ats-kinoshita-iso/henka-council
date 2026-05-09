@@ -113,6 +113,41 @@ Rule 4 governs `swarm_request` (suggestive — the orchestrator decides the
 composition). Rule 4 does **not** govern `stop` (mandatory — the orchestrator
 honors it unconditionally). This carve-out is explicit and non-negotiable.
 
+### Rule 4 — Human-Level-5 Arbitration Exception
+
+There is one narrow exception where the orchestrator does **not** execute an
+unconditional halt, even when a `stop` signal is present: when the stop signal
+**directly contradicts an active Level-5 (human-approved) decision**.
+
+**Definition:** A Level-5 approved decision is any action that has passed the
+nemawashi walkthrough and received explicit human approval, creating a record in
+`decision-log.jsonl` with `user_approval_required: true` and a non-null
+`nemawashi_walkthrough_version`. This approval represents the highest authority
+in the council system.
+
+**Conflict detection:** If a `stop` signal's `reason` field identifies the
+Level-5 approved decision as the trigger (e.g., "stopping because the approved
+correction to `spec.md` violates scope"), the orchestrator MUST NOT auto-halt.
+Instead:
+
+1. Write the thank-the-puller acknowledgment verbatim (this step is never
+   skipped, even in the arbitration path).
+2. Surface the conflict to the human reviewer with the following information:
+   - The Level-5 DEC entry that is in conflict (DEC-NNNN, timestamp, outcome)
+   - The agent's `andon_signal` reason and evidence verbatim
+   - A request for explicit arbitration before any action proceeds
+3. Suspend the sprint loop pending the human reviewer's instruction.
+4. Log a `DEC` entry with `decision_type: "andon-level5-conflict"` and
+   `applied_automatically: false`.
+
+**Rationale:** A single agent must not be able to unilaterally override a human
+approval by issuing a `stop` signal. The andon mechanism is for quality
+assurance, not for vetoing human decisions. When the two conflict, human
+arbitration is required rather than automatic halt.
+
+This exception does NOT apply when the stop signal is about a different concern
+than the Level-5 decision. In that case the normal unconditional halt applies.
+
 ---
 
 ## Pull-Rate Tracking Reference
@@ -121,10 +156,40 @@ The orchestrator tracks pull-rate (andon signal frequency) per agent in
 `audit-log.jsonl`. Each `PostToolUse` hook entry records the agent ID and
 signal type when an `andon_signal` is present in the agent's output.
 
-- **Normal pull-rate:** informational.
-- **Anomalous pull-rate:** same agent issuing three or more consecutive
-  `stop` signals without resolution is flagged as `quality-defect-anomaly`
-  Henkaten (not a floor-drop trigger per §2.4.3 corroboration requirement).
+### Pull-Rate Counting and Weighting
+
+Both signal types count toward an agent's pull-rate, weighted differently:
+
+- `andon_signal: stop` — weight **2** (committed halt; higher cost)
+- `andon_signal: alert` — weight **1** (non-blocking escalation; lower cost)
+
+The orchestrator maintains a running weighted score per agent per sprint and
+per rolling 60-minute window.
+
+### Anomaly Thresholds
+
+| Threshold | Window | Action |
+|---|---|---|
+| Weighted score ≥ 3 (raw count) | Single sprint | Flag as `quality-defect-anomaly` Henkaten |
+| Weighted score ≥ 5 | Rolling 60 minutes | Flag as `quality-defect-anomaly` Henkaten |
+
+When either threshold is crossed:
+
+1. A Henkaten record is appended with `change_type: "agent-capability-change"`,
+   `fourM_axis: "Machine"`, `change_origin: "active"`, and the agent ID.
+2. The anomaly is surfaced to the user at the next retrospective.
+3. The agent's future signals are **not suppressed** — they continue to be
+   honored per normal protocol.
+
+### What Anomalous Pull-Rate Is NOT
+
+An anomalously high pull-rate from a single agent is **not** a floor-drop
+trigger. It is tracked as a quality-defect-anomaly for pattern recognition and
+human awareness — not as an indication that the autonomy floor should change.
+
+- **Normal pull-rate:** informational; logged to `audit-log.jsonl`.
+- **Anomalous pull-rate:** flagged as `quality-defect-anomaly` Henkaten (not
+  a floor-drop trigger per §2.4.3 distinct-originator corroboration requirement).
 - **Floor-drop trigger:** three `stop` signals from **at least 2 distinct
   originator agents** (see §2.4.3 for the full dynamic-autonomy-floor rules).
 
@@ -134,14 +199,108 @@ retrospective.
 
 ---
 
+## Distinct-Originator Corroboration (§2.4.3 / v2.1 Amendment A2)
+
+The dynamic autonomy floor drops ONLY when the corroboration requirement is met.
+This section cross-references §2.4.3 so that andon-protocol.md is self-contained.
+
+**Corroboration rule:** a floor drop requires **≥2 distinct originator agents**
+each independently issuing an `andon_signal: stop` on the same underlying issue
+within the current sprint loop.
+
+- "Distinct" means different agent IDs. The same agent issuing two or more
+  consecutive stops counts as **one originator**, not two.
+- "Same underlying issue" is determined by the orchestrator based on the
+  `reason` and `evidence` fields of each stop signal.
+
+**Same-agent repeated stops:** tracked as pull-rate anomaly
+(`quality-defect-anomaly` Henkaten, `change_type: agent-capability-change`) —
+NOT as a floor-drop trigger.
+
+**Cross-originator corroboration:** when two distinct agents stop on the same
+issue, the third distinct stop from any originator within the same sprint loop
+triggers the floor drop. The orchestrator calls
+`scripts/update-effective-autonomy.py` with the new level and the triggering
+stop signals as evidence.
+
+**Example:**
+- `henkaten-detector` issues `stop` → 1 originator; no floor change.
+- `architect` issues `stop` on the same issue → 2 distinct originators;
+  if this is the third `stop` total for the sprint, floor drops.
+- `henkaten-detector` issues a second `stop` on the same issue → still 1
+  unique originator for `henkaten-detector`; pull-rate anomaly only.
+
+---
+
+## Resolution and Resume
+
+When a `stop` signal is issued, the sprint loop halts completely. It does not
+auto-resume. The following steps govern resolution:
+
+### Resolution Sequence
+
+1. **Human reviewer** examines the halt reason and evidence presented by the
+   orchestrator.
+2. **Swarm (optional):** if the stop signal included a `swarm_request`, the
+   orchestrator may dispatch the named agents for analysis after the
+   acknowledgment step.
+3. **Resolution:** the human reviewer (or swarm consensus with human sign-off)
+   determines that the blocking condition is resolved.
+4. **Resume signal:** the originating agent must confirm via a follow-up
+   signal in its next output:
+
+```json
+{
+  "andon_signal": {
+    "type": "resume",
+    "original_stop_reason": "original stop reason here",
+    "resolution_summary": "concise statement of how the issue was resolved",
+    "confirmed_by": "agent_id"
+  }
+}
+```
+
+5. **Decision-log entry:** the orchestrator appends a record to
+   `decision-log.jsonl` (via `scripts/append-decision.py`) with:
+   - `decision_type: "andon-resolution"`
+   - `decision_outcome: "resumed"` (or `"halted-permanently"` if unresolved)
+   - `council_agents_involved`: [originating agent, any swarm members]
+   - `evidence_cited`: the original stop evidence plus resolution evidence
+   - `applied_automatically: false`
+   - `user_approval_required: true`
+
+6. **Sprint resumes** only after the decision-log entry is written and the
+   user has explicitly invoked `/council-review` to restart the loop.
+
+### Unresolved Stops
+
+If a stop cannot be resolved (the blocking condition persists), the decision-log
+entry uses `decision_outcome: "halted-permanently"` and the sprint is abandoned.
+The Orchestrator surfaces the halt evidence in its final response. A new sprint
+must be initiated from scratch; the autorun loop does not retry halted sprints
+automatically.
+
+---
+
 ## Summary Checklist for Orchestrator
 
 When any `andon_signal` arrives:
 
 - [ ] Write thank-the-puller acknowledgment ("Thank you for stopping the line…")
-      verbatim BEFORE any other response.
+      verbatim BEFORE any other response. This applies to ALL signal types
+      (alert, stop, and the Level-5 arbitration path).
 - [ ] For `stop`: halt immediately, present halt evidence, wait for user.
+      Exception: if stop contradicts an active Level-5 decision, surface
+      conflict to human reviewer for arbitration (Rule 4 carve-out) — still
+      write acknowledgment first.
 - [ ] For `alert`: dispatch swarm (parallel, ≤4 agents, takt-bounded 10 min).
 - [ ] Do NOT filter, defer, or second-guess any signal.
-- [ ] Log pull-rate entry in audit-log.
+- [ ] Increment pull-rate counter in `audit-log.jsonl` for the issuing agent
+      (weight 2 for stop, weight 1 for alert). Check anomaly thresholds.
 - [ ] If `alert` times out: escalate to `stop`.
+- [ ] On resolution: wait for originating agent's `resume` signal, then
+      append `andon-resolution` entry to `decision-log.jsonl` via
+      `scripts/append-decision.py`.
+- [ ] Check distinct-originator count (§2.4.3 / A2): if ≥2 distinct agents
+      have stopped on the same issue and total stop count ≥ 3, call
+      `scripts/update-effective-autonomy.py` to drop the floor.
