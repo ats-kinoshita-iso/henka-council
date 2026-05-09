@@ -103,3 +103,16 @@ Stopped. Current sprint state should be committed.
 - Rubric scores (cli-tool 4-dim): functionality 5, usability 5, error_handling 5, code_quality 4; weighted total 4.85/5 (code_quality docked 1 point per the gate-overmatch resolution, since the script's literal denial-list strings — though semantically correct — trigger a contract-side regex false-positive)
 - Date: 2026-05-09
 - **Subagent reliability — playbook validated:** All four implementation passes ran cleanly to completion under write-first prompting. Each pass reported its self-review smoke checks before the orchestrator committed. The contract-review evaluator (round 1) wrote its review on first attempt. The implementation evaluator wrote `sprint-06-r1.md` on first attempt. **Zero forked-subagent stalls this sprint** — a meaningful improvement over Sprint 5's three consecutive evaluator dispatches stalling. The playbook's combination of (a) narrow scope per Generator dispatch, (b) write-first prompting, and (c) pre-resolved findings on retry appears to be the right mitigation.
+## Session 2026-05-09T08:53:58-04:00
+Stopped. Current sprint state should be committed.
+
+## Sprint 07: S5 — Nemawashi Walkthrough + Course Corrections
+- Status: PASS
+- Rounds: 1 evaluation round (no retries needed)
+- Contract negotiation: 1 round APPROVED on first review (0 blockers / 0 majors / 1 minor — best contract negotiation outcome to date). The contract review evaluator stalled on its first dispatch but completed on one quick re-spawn with explicit step-by-step instructions.
+- Implementation: split across 2 narrow Generator passes per `.harness/sprint-06-playbook.md` (Pass A: NEW skills/council-review/SKILL.md (14k chars); Pass B: ENRICH skills/council-autorun/SKILL.md Step 1D 28k → 36k chars + ENRICH templates/nemawashi-position-paper.md 6k → 13k chars). Single combined commit (d8f42ad). 3 markdown files total — sprint 7 is the first markdown-only sprint with no Python or shell deliverables.
+- Passed criteria: 10/10 (deterministic 7/7, LLM-judge 3/3); weighted score 100%
+- Should-NOT gate: 6/6 PASS (no false-FAILs this sprint; Gate 6 cross-sprint scope drift used `8461cb3..HEAD --diff-filter=ACM` baseline; passed cleanly)
+- Rubric scores (cli-tool 4-dim): functionality 5, usability 5, error_handling 5, code_quality 5; weighted total 5.00/5
+- Date: 2026-05-09
+- **Subagent reliability — playbook continuing to validate:** Both implementation passes ran cleanly. The implementation evaluator wrote sprint-07-r1.md using the "write stub first, refine via Edit" pattern that the orchestrator's prompt explicitly suggested — this was a new mitigation tactic that worked well. Only one subagent stall observed (contract review round 1 first attempt); resolved with a single explicit re-spawn.

@@ -1,5 +1,5 @@
 {
-  "current_sprint": 7,
+  "current_sprint": 8,
   "sprints": [
     {
       "number": 1,
@@ -145,7 +145,34 @@
       ],
       "process_notes": "Implementation split across 4 narrow Generator passes per .harness/sprint-06-playbook.md. Zero forked-subagent stalls \u2014 meaningful improvement over Sprint 5's pattern. Orchestrator committed after Pass D per the playbook's 'Generator stages, orchestrator commits' approach. Gate 3 false-FAIL handled via PASS_WITH_CAVEAT (Sprint 3 precedent). code_quality docked 5\u21924 for the gate-overmatch resolution.",
       "completed_at": "2026-05-09T09:00:00Z"
+    },
+    {
+      "number": 7,
+      "title": "S5 \u2014 Nemawashi Walkthrough + Course Corrections",
+      "status": "PASS",
+      "rounds": 1,
+      "criteria_passed": 10,
+      "criteria_total": 10,
+      "weighted_score": 100,
+      "should_not_gate": "PASS",
+      "rubric_scores": {
+        "functionality": 5,
+        "usability": 5,
+        "error_handling": 5,
+        "code_quality": 5,
+        "weighted_rubric_total": 5.00
+      },
+      "contract_negotiation_rounds": 1,
+      "implementation_commits": [
+        "d8f42ad"
+      ],
+      "implementation_passes": [
+        "Pass A: NEW skills/council-review/SKILL.md",
+        "Pass B: ENRICH skills/council-autorun/SKILL.md Step 1D + ENRICH templates/nemawashi-position-paper.md"
+      ],
+      "process_notes": "First sprint with single-round contract approval (0 blockers / 0 majors / 1 minor). Markdown-only sprint (no Python or shell deliverables). Implementation evaluator used the 'write stub first, refine via Edit' tactic explicitly suggested in the orchestrator's prompt \u2014 new mitigation that worked well. Only one subagent stall observed (contract review round 1 first attempt); resolved on one re-spawn.",
+      "completed_at": "2026-05-09T10:00:00Z"
     }
   ],
-  "last_updated": "2026-05-09T08:53:09-04:00"
+  "last_updated": "2026-05-09T11:36:33-04:00"
 }
