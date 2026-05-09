@@ -1,6 +1,6 @@
-# henka-council — Phase 0 Proposal
+# henka-council — Phase 0 Proposal (v1)
 
-**Status:** Draft for review
+**Status:** **SUPERSEDED 2026-05-07** by [`docs/phase-0-proposal-v2.md`](./phase-0-proposal-v2.md), which absorbs this document plus the ten redesigns from [`docs/phase-0-proposal-supplement.md`](./phase-0-proposal-supplement.md). Preserved as historical lineage; v2 is the authoritative kickoff input.
 **Date:** 2026-05-07
 **Author:** Synthesized from the henkaten-council VSCode specification (`henka-council.txt`)
 **Scope:** This document is the Phase 0 proposal for reimplementing the henkaten-council governance system as a Claude Code plugin that wraps and extends [trine-eval](https://github.com/ats-kinoshita-iso/trine-eval). No code is produced; this proposal defines the contracts that subsequent sprints will implement.
