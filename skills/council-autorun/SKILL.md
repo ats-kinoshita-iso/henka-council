@@ -345,31 +345,30 @@ Minor correction examples:
 - Noting new dependencies (informational)
 - Feature status updates from `pending` → `done`
 
-### 1D.3 — Major Corrections (Level 5 Approval, Nemawashi Stub — Sprint 6)
+### 1D.3 — Major Corrections (Level 5 Approval, Full Nemawashi Walkthrough — Sprint 7)
 
-Major corrections OR any irreversible action require the nemawashi walkthrough
-(full four-stage walkthrough is a **sprint 7 / S5 deliverable**).
+Major corrections OR any irreversible action require the four-stage nemawashi
+walkthrough (§8.2 Step 1D, R5). The walkthrough is defined in full below.
 
-**In Sprint 6 (this version), the nemawashi path is a STUB:**
+**Irreversible-action auto-escalation (§2.4.2, R9):** The reversibility check
+(Step 1D.1) precedes the minor/major classification. If the proposed action's
+reversibility is `irreversible`, the orchestrator MUST initiate the 4-stage
+mandatory nemawashi walkthrough even if the nominal scope says `minor`. No
+exception exists for truly irreversible changes — they always escalate to the
+major path and require Level 5 (human) approval via Stage 4.
 
-1. The orchestrator creates a placeholder position paper at
-   `.council/proposed/DEC-{NNNN}.md` with `nemawashi_walkthrough_version: null`
-   to indicate the walkthrough has not yet been executed.
-2. The path `.council/proposed/DEC-{NNNN}.md` is surfaced to the user with a
-   message:
-   > "Major correction DEC-{NNNN} requires nemawashi approval. A placeholder
-   > has been written to `.council/proposed/DEC-{NNNN}.md`. Full walkthrough
-   > support is available from sprint 7 onward. Please review and confirm
-   > manually if you wish to proceed."
-3. The sprint loop **halts** pending user action (Step 1F halt condition 4:
-   `user_intervention_requested`).
+**Single-prompt minor approval path (Q15):** For a reversible minor change with
+effective-autonomy level ≥ 4, no position paper is created. The orchestrator
+prompts the user with a one-line summary: *"Apply minor correction X? (yes/no)"*
+and applies on confirmation. The DEC entry for this path has:
+- `decision_type: course-correction-minor`
+- `nemawashi_walkthrough_version: null`
+- `reversibility: reversible`
 
-The `nemawashi_walkthrough_version` field in the decision-log entry records:
-- `null` for minor reversible auto-applied changes
-- `0` for the sprint-6 stub placeholder (walkthrough not executed)
-- Integer ≥1 for future versions when the full walkthrough is implemented
+The literal `nemawashi_walkthrough_version: null` MUST appear in the DEC entry
+for the single-prompt minor path (not 0, not omitted — exactly `null`).
 
-Major correction categories (any item below requires nemawashi or Level 5):
+**Major correction categories** (any item below requires nemawashi or Level 5):
 - Sprint reordering
 - `features.json` modifications
 - `spec.md` amendments
@@ -378,6 +377,185 @@ Major correction categories (any item below requires nemawashi or Level 5):
 - Architectural pivots
 - Governance rule changes
 - Any irreversible action (R9)
+
+---
+
+### Stage 1 — Write Position Paper
+
+*Source: §8.2 Step 1D Stage 1, R5, A4*
+
+**The orchestrator writes the full position paper BEFORE presenting anything
+to the user.** The position paper is the orchestrator's complete analysis, with
+every agent's perspective and evidence chain, organized so the user can form an
+independent judgment.
+
+**File location:** `.council/proposed/DEC-{NNNN}.md`
+- DEC-NNNN uses a 4-digit (or more) zero-padded counter (e.g., `DEC-0042`)
+  matching the pattern `^DEC-[0-9]{4,}$`, consistent with the decision-log
+  schema in `schemas/decision-log-entry.schema.json`.
+- Use `templates/nemawashi-position-paper.md` as the scaffold.
+
+**The position paper must include:**
+1. **Proposed change** — clear, specific description of what would be different
+   after the change is applied. Which files are affected? What is the scope?
+2. **Trigger / motivation** — which agent's analysis surfaced this need, and
+   what evidence drove it (with `evidence_class`, `confidence`, and conformant
+   `verification` commands per §7.0.2 allowlist).
+3. **Reversibility assessment** — classification per Step 1D.1 table. If
+   `irreversible`: explain why and note that mandatory nemawashi applies.
+4. **Per-agent perspectives with evidence chains** — for each contributing
+   agent: finding, evidence class + confidence + verification command, and the
+   agent's view on the proposed change.
+5. **Consensus chain** — how the individual perspectives converge or diverge;
+   residual uncertainty.
+6. **Affected artifacts table** — file paths, change type, reversibility.
+
+After writing the position paper, surface to user:
+> *"I've drafted a proposal at `.council/proposed/DEC-{NNNN}.md`. May I walk
+> you through each agent's perspective before asking for approval? (yes/no)"*
+
+If the user says `no`, the sprint loop halts (Step 1F halt condition 4:
+`user_intervention_requested`) with the position paper left in place.
+
+---
+
+### Stage 2 — Sequential Agent Presentation
+
+*Source: §8.2 Step 1D Stage 2, R5*
+
+**Dispatch order matches Step 1C fan-out:**
+1. architect
+2. scope-guardian
+3. henkaten-detector
+4. retrospective
+5. (Other active agents as named in `.council/council-manifest.json`)
+
+**For each agent, the orchestrator reads the corresponding perspective from
+the position paper and presents it to the user with the three-handle prompt:**
+
+> *"[Agent Name] reviewed the sprint results and found: [brief summary of
+> finding and evidence]. [Agent Name]'s view is that [perspective on the
+> proposed change].*
+>
+> *Does [Agent Name]'s framing match your understanding? (yes / refine / disagree)"*
+
+**Three-handle responses:**
+
+- `yes` — Record agreement in the position paper's Stage 2 section. Proceed
+  to the next agent's perspective.
+- `refine` — Record the specific refinement the user offers. Re-present the
+  agent's perspective with the refinement incorporated. If the user accepts
+  the re-presented version (`yes`), record as "yes after refine" — no Stage 3
+  needed for this agent. Multiple `refine` handles accepted in-line in Stage 2
+  do NOT require Stage 3.
+- `disagree` — Record the disagreement with the user's stated reason. Continue
+  to the next agent. Accumulate all disagreements; advance to Stage 3 after
+  all agents have been presented.
+
+**All three-handle responses are logged to `.council/audit-log.jsonl`** via the
+log-tool-call hook (sprint 5). Each log entry records: `dec_id`, `agent_id`,
+`stage`, `handle`, `timestamp`, and (for `refine`/`disagree`) the user's
+stated reason.
+
+**Stage 2 outcome determination:**
+- All agents `yes` (or `yes after refine`) → skip Stage 3; advance to Stage 4.
+- Any agent `disagree` → advance to Stage 3 regardless of other agents' handles.
+
+---
+
+### Stage 3 — Alignment / Revision Loop
+
+*Source: §8.2 Step 1D Stage 3, R5*
+
+**Skip condition:** If all Stage 2 responses were `yes` (or `yes after refine`),
+skip directly to Stage 4.
+
+**When Stage 3 is triggered (at least one `disagree`):**
+
+1. Summarize all disagreements and unresolved refinements from Stage 2.
+2. Revise the position paper to address the disagreements.
+3. Save the revised paper as a new file with `-rev{N}` suffix:
+   - First revision: `.council/proposed/DEC-{NNNN}-rev1.md`
+   - Second revision: `.council/proposed/DEC-{NNNN}-rev2.md`
+   - Each revision is a **separate file** in `.council/proposed/`; the audit
+     chain preserves all versions.
+4. Return to Stage 2 with the revised paper. Re-present to ALL agents.
+5. Repeat until no disagreements remain.
+
+**Escalation-to-halt:** If alignment is not reached after 2 revision cycles
+(default; configurable in `.council/config.json`), log `status: escalated-to-user`,
+present remaining disagreements to the user, and HALT. Do not auto-proceed to
+Stage 4.
+
+**Multiple `refine` handles from Stage 2** are batched into a single Stage 3
+revision pass — one revision file addresses all accumulated refinements.
+
+**Track in the position paper's Stage 3 section:**
+- Which agent's `disagree` or `refine` motivated each revision
+- What changed in the revised paper relative to the prior version
+
+---
+
+### Stage 4 — Ratify Prompt and Post-Ratify Actions
+
+*Source: §8.2 Step 1D Stage 4, R5, v2.1 amendment A4*
+
+**Precondition:** all agent perspectives are aligned (no outstanding
+`disagree` handles from Stage 2 / Stage 3).
+
+**Ratification prompt (Orchestrator says):**
+
+> *"All perspectives are aligned on DEC-{NNNN}. To confirm:*
+>
+> ***Proposed change:** {one-sentence summary}*
+> ***Affected files:** {comma-separated list}*
+> ***Reversibility:** {reversible / irreversible}*
+>
+> *Apply DEC-{NNNN}? (yes/no)"*
+
+This is a **Level-5 (human) step**. The orchestrator blocks until the user
+types `yes` or `no`.
+
+**On `yes` (ratified):**
+
+1. Apply the proposed change immediately.
+2. Commit using this message pattern: `DEC-{NNNN}: {description}`.
+3. **Move** the position paper from `.council/proposed/` to
+   `.council/proposed/archive/DEC-{NNNN}.md` (or the final revision filename
+   if Stage 3 was triggered — e.g., `DEC-{NNNN}-rev{N}.md`). The original
+   file is **moved, not copied and not deleted**; the archive copy is the
+   preserved audit record. Per v2.1 amendment A4: the `decision-log.jsonl`
+   `nemawashi_walkthrough_version` path must remain resolvable at the archive
+   location.
+4. Append audit-log entry: *"DEC-{NNNN} position paper archived at
+   `.council/proposed/archive/DEC-{NNNN}.md`"* via the log-tool-call hook.
+5. Emit DEC entry via `scripts/append-decision.py` with full fields:
+   - `decision_type: course-correction-major`
+   - `nemawashi_walkthrough_version: {N}` — the number of Stage 3 revision
+     cycles (0 if Stage 3 was never triggered, 1 if one revision was needed,
+     etc.)
+   - `reversibility: {reversible | irreversible}`
+   - `status: ratified`
+   - `applied_at: {ISO-8601 timestamp}`
+   - `dec_id: DEC-{NNNN}`
+
+**On `no` (rejected):**
+
+1. Log `status: rejected`.
+2. Do NOT apply the change.
+3. The position paper remains in `.council/proposed/` for reference.
+4. Emit DEC entry via `scripts/append-decision.py` with `status: rejected`,
+   `applied_automatically: false`.
+
+**Andon signals during the walkthrough:** If any agent issues
+`andon_signal: stop` during Stage 1–4, the orchestrator MUST honor it
+unconditionally and precede its response with the verbatim thank-the-puller
+acknowledgment from `instructions/andon-protocol.md`. The walkthrough halts
+and jumps to Step 1F.
+
+**Cross-references:** `templates/nemawashi-position-paper.md`,
+`.council/proposed/`, `.council/proposed/archive/`,
+`scripts/append-decision.py`, `instructions/andon-protocol.md`.
 
 ---
 
@@ -636,21 +814,24 @@ This skill depends on and coordinates with the following files:
 | `schemas/decision-log-entry.schema.json` | Schema for decision-log entries (Step 1E) |
 | `schemas/henka-record.schema.json` | Schema for henkaten records (Steps 1A, 1C) |
 | `templates/dispatch-envelope.md` | Standardized subagent dispatch template (Step 1C) |
-| `templates/nemawashi-position-paper.md` | Position paper template for major decisions (Step 1D stub) |
+| `templates/nemawashi-position-paper.md` | Position paper template for major decisions (Step 1D Stages 1–4) |
 
 ---
 
-## Out of Scope (Sprint 6)
+## Out of Scope (Sprint 7)
 
 The following behaviors are **documented** in this skill but **not implemented**
-in sprint 6. They are stubs or references only:
+in sprint 7. They are stubs or references only:
 
-- **Full nemawashi walkthrough** (Steps 1D Stages 1–4) — sprint 7 / S5.
-  Sprint 6 ships a stub that creates a DEC placeholder with
-  `nemawashi_walkthrough_version: null`.
 - **`/council-retro` per-cycle PDCA** — sprint 8 / S6. Referenced in Step 1I.
 - **`/council-retro-mini` skill** — sprint 8 / S6. Step 1H uses a stub.
-- **`/council-review --restore-autonomy`** — sprint 7 / S5. Mentioned in Step 1F.
 - **Live `.council/` directory** — `.council/` does not exist in this plugin
   repo. All write-path behaviors target a consumer project's `.council/`
   directory. This file is descriptive documentation only.
+
+The following were stubs in sprint 6 and are now **fully implemented** in
+sprint 7:
+
+- **Full nemawashi walkthrough** (Step 1D Stages 1–4) — implemented above.
+- **`/council-review --restore-autonomy`** — implemented in
+  `skills/council-review/SKILL.md` (sprint 7 / S5 deliverable).

@@ -1,9 +1,22 @@
 # Nemawashi Position Paper — Template
 
+<!-- Metadata block (machine-readable) -->
+```yaml
+decision_id: DEC-{NNNN}
+proposed_at: {ISO-8601 UTC timestamp}
+triggered_by: {agent_id that surfaced the need, e.g., "architect", "henkaten-detector"}
+proposed_by_agent: orchestrator
+sprint_context: {NN}
+proposed_change_type: major | irreversible-action
+reversibility: reversible | irreversible
+status: draft | revised-rev{N} | ratified | rejected | deferred
+nemawashi_walkthrough_version: {N}  # 0 if no Stage 3 revisions; ≥1 after Stage 3 cycles
+```
+
 **Document ID:** DEC-{NNNN}
 **Date:** {ISO-8601 date}
 **Sprint Context:** Sprint {NN}
-**Proposed Change Type:** minor | major | irreversible-action
+**Proposed Change Type:** major | irreversible-action
 **Reversibility:** reversible | irreversible
 **Status:** draft | revised-rev{N} | ratified | rejected | deferred
 
@@ -28,12 +41,20 @@ remains resolvable.
 
 ---
 
-## Stage 1 — Position Paper (Write Before Presenting)
+## Stage 1 — Position Statement
 
 *Purpose: The Orchestrator writes the full proposal and consensus chain BEFORE
 presenting anything to the user. The position paper is the orchestrator's
 complete analysis, with every agent's perspective and evidence chain, organized
 so the user can form an independent judgment.*
+
+*Instructions: Fill in every field below. Do NOT present this to the user until
+the entire Stage 1 section is complete. Write the position paper first, then
+begin Stage 2.*
+
+### Title of Proposed Change
+
+> {Concise title — e.g., "Add --strict flag to scripts/run-verification.py"}
 
 ### Proposed Change
 
@@ -41,39 +62,75 @@ so the user can form an independent judgment.*
 > What would be different after this change is applied? Which files are
 > affected? What is the scope?}
 
-### Rationale
+### Trigger / Motivation
 
-> {Why is this change being proposed? What evidence drives it? What would
-> happen if the change is NOT made?}
+> {What triggered this proposal? Which agent's analysis surfaced the need?
+> Reference the relevant Henkaten record (HK-NNNN) or sprint eval finding.
+> What would happen if the change is NOT made?}
 
 ### Reversibility Assessment
 
 - **Classification:** reversible | irreversible
 - **Basis:** {Explanation — which row in the reversibility table in
-  `@instructions/human-approval.md` applies, and why.}
-- **Escalation reason:** {If irreversible: explain why this triggers mandatory
-  escalation to major path.}
+  `skills/council-autorun/SKILL.md` Step 1D.1 applies, and why.}
+- **Auto-escalation note:** {If irreversible: "This action is irreversible.
+  Per §2.4.2 R9, it auto-escalates to mandatory nemawashi regardless of
+  nominal scope. Level 5 (human) approval via Stage 4 is required."}
+
+### Expected Scope of Impact
+
+- **Files affected:** {list of relative file paths}
+- **Agents affected:** {list of agent IDs whose behavior or context changes}
+- **State affected:** {which `.council/` state files, decision-log entries,
+  Henkaten records, or effective-autonomy state is touched}
 
 ### Agent Perspectives with Evidence
 
 For each agent that contributed analysis to this decision:
 
-#### Agent: {Agent Name}
-- **Finding:** {What did this agent observe or infer?}
+#### Agent: architect
+- **Finding:** {What did architect observe or infer?}
 - **Evidence chain:**
-  - `{evidence_class: observed | inferred | speculative}`
-  - `confidence: high | medium | low`
-  - `verification: {conformant verification command}`
-- **Perspective on the proposed change:** {This agent's view — does the
+  - `evidence_class: observed | inferred | speculative`
+  - `confidence: 1–5`
+  - `verification: {conformant verification command per §7.0.2 allowlist}`
+- **Perspective on the proposed change:** {architect's view — does the
   evidence support the change? What caveats?}
 
-*(Repeat for each contributing agent)*
+#### Agent: scope-guardian
+- **Finding:** {What did scope-guardian observe or infer?}
+- **Evidence chain:**
+  - `evidence_class: observed | inferred | speculative`
+  - `confidence: 1–5`
+  - `verification: {conformant verification command}`
+- **Perspective on the proposed change:** {scope-guardian's view}
+
+#### Agent: henkaten-detector
+- **Finding:** {What did henkaten-detector observe or infer?}
+- **Evidence chain:**
+  - `evidence_class: observed | inferred | speculative`
+  - `confidence: 1–5`
+  - `verification: {conformant verification command}`
+- **Perspective on the proposed change:** {henkaten-detector's view;
+  include `change_origin: active | passive` and `fourM_axis` classification}
+
+#### Agent: retrospective
+- **Finding:** {What did retrospective observe or infer?}
+- **Evidence chain:**
+  - `evidence_class: observed | inferred | speculative`
+  - `confidence: 1–5`
+  - `verification: {conformant verification command}`
+- **Perspective on the proposed change:** {retrospective's view — any
+  yokoten or pattern connection to prior sprints?}
+
+*(Add sections for any other active agents, e.g., qa-regression, rag-source)*
 
 ### Consensus Chain
 
 > {Walk through how the individual agent perspectives converge on (or diverge
 > from) the proposed change. Where do they agree? Where do they differ? What
-> is the residual uncertainty?}
+> is the residual uncertainty? Which agents support? Which have caveats or
+> reservations?}
 
 ### Affected Artifacts
 
@@ -83,100 +140,174 @@ For each agent that contributed analysis to this decision:
 
 ---
 
-## Stage 2 — Sequential Agent Presentation
+## Stage 2 — Per-Agent Presentation
 
 *Purpose: Walk the user through each agent's perspective one at a time,
 giving them three handles to respond with: yes, refine, or disagree.
 Build shared understanding incrementally. Do not rush to Stage 4.*
 
-**Presentation script (Orchestrator says):**
+**Opening presentation script (Orchestrator says):**
 
-> "I've drafted a proposal at `.council/proposed/DEC-{NNNN}.md`. May I walk
-> you through each agent's perspective before asking for approval? (yes/no)"
+> *"I've drafted a proposal at `.council/proposed/DEC-{NNNN}.md`. May I walk
+> you through each agent's perspective before asking for approval? (yes/no)"*
 
-**For each agent perspective (in order):**
+If the user says `no`, halt and log `user_intervention_requested`.
 
-> "[Agent Name] reviewed the sprint results and found: [brief summary of
-> finding and evidence]. [Agent Name]'s view is that [perspective on
-> the proposed change]."
+**For each agent perspective, present in this order:**
+1. architect → 2. scope-guardian → 3. henkaten-detector → 4. retrospective
+→ (additional agents from council-manifest, if active)
+
+**Per-agent presentation script (Orchestrator says for each):**
+
+> *"[Agent Name] reviewed the sprint results and found: [brief summary of
+> finding, evidence_class, confidence level]. [Agent Name]'s view is that
+> [perspective on the proposed change, including any caveats or conditions].*
 >
-> "Does [Agent Name]'s framing match your understanding? (yes / refine / disagree)"
+> *Does [Agent Name]'s framing match your understanding? (yes / refine / disagree)"*
 
-**Three-handle responses:**
+**Three-handle responses and how to proceed:**
 
-- `yes` — Record agreement, present the next agent's perspective.
-- `refine` — Record the user's refinement. Update this section with the
-  refined framing. Re-present the agent's perspective with the refinement.
-- `disagree` — Record the disagreement. Continue to the next agent. Bring
-  all disagreements together in Stage 3.
+| Handle | Meaning | Orchestrator action |
+|---|---|---|
+| `yes` | User accepts this agent's perspective as stated | Record `{agent}: yes`. Present next agent. |
+| `refine` | User has a specific modification to the agent's framing | Record the refinement. Re-present with refinement: *"Updated framing: [refined version]. Does that match? (yes / refine / disagree)"* If `yes`, record `{agent}: yes after refine`. |
+| `disagree` | User disputes this agent's perspective fundamentally | Record `{agent}: disagree — [user's stated reason]`. Continue to next agent. Bring to Stage 3. |
 
-**Stage 2 completion note:**
+All three-handle responses are logged to `.council/audit-log.jsonl` with:
+`{ dec_id, agent_id, stage: 2, handle, reason_if_refine_or_disagree, timestamp }`
 
-> Record of each agent's Stage 2 outcome:
-> - {Agent Name}: yes | refined | disagreement-noted
-> *(Repeat for each agent)*
+**Stage 2 completion record:**
+
+| Agent | Handle | Notes |
+|---|---|---|
+| architect | yes \| yes after refine \| disagree | {reason if disagree or refine} |
+| scope-guardian | yes \| yes after refine \| disagree | {reason if disagree or refine} |
+| henkaten-detector | yes \| yes after refine \| disagree | {reason if disagree or refine} |
+| retrospective | yes \| yes after refine \| disagree | {reason if disagree or refine} |
+
+**Stage 2 aggregate result:**
+
+- All `yes` (or `yes after refine`) → advance directly to Stage 4 (skip Stage 3).
+- Any `disagree` → advance to Stage 3 regardless of other agents' handles.
 
 ---
 
-## Stage 3 — Alignment
+## Stage 3 — Alignment / Revision History
 
 *Purpose: Surface disagreements recorded in Stage 2, revise the position
 paper to incorporate the user's framing, and confirm alignment before
 asking for ratification.*
 
-**If all Stage 2 responses were `yes`:** Skip directly to Stage 4.
+**Skip condition:** If all Stage 2 responses were `yes` (or `yes after refine`),
+skip directly to Stage 4. Do not create any rev file.
 
-**If disagreements or refinements were recorded:**
+**If any `disagree` handle was recorded in Stage 2:**
 
-1. Summarize all disagreements and refinements.
-2. Revise the position paper: save new version as `DEC-{NNNN}-rev{N}.md`.
-3. Repeat Stage 2 for the revised paper.
-4. If alignment is reached: proceed to Stage 4.
-5. If alignment is not reached after 2 revision cycles: log
-   `status: escalated-to-user`, present remaining disagreements, HALT.
+1. Summarize all `disagree` handles from Stage 2 (and any unresolved `refine`
+   handles) — list each agent and the user's stated reason.
+2. Revise the position paper to address all disagreements in a single pass.
+3. **Save the revised paper as a new file** using the `-rev{N}` suffix naming
+   convention:
+   - First revision: `.council/proposed/DEC-{NNNN}-rev1.md`
+   - Second revision: `.council/proposed/DEC-{NNNN}-rev2.md`
+   - Each revision is a separate file in `.council/proposed/`; all versions
+     are preserved for the audit chain.
+4. Return to Stage 2 with the revised paper. Re-present ALL agents' perspectives.
+5. If alignment is reached (all agents `yes` or `yes after refine`): proceed
+   to Stage 4.
+6. **Escalation-to-halt:** If alignment is not reached after 2 revision cycles
+   (default; configurable in `.council/config.json`), log
+   `status: escalated-to-user`, present remaining disagreements to the user,
+   and HALT. Do not proceed to Stage 4 automatically.
+
+**Track which agent's `disagree` or `refine` motivated each revision.**
 
 **Stage 3 revision log:**
 
-| Revision | Date | Changes Made | Outcome |
-|---|---|---|---|
-| rev1 | {date} | {what changed} | {aligned / unresolved} |
+| Revision | File | Date | Motivated by | Changes Made | Stage 2 Re-run Outcome |
+|---|---|---|---|---|---|
+| rev1 | DEC-{NNNN}-rev1.md | {date} | {agent}: disagree — {reason} | {what changed in the paper} | {aligned / disagree continues} |
+| rev2 | DEC-{NNNN}-rev2.md | {date} | {agent}: disagree — {reason} | {what changed} | {aligned / escalated-to-user} |
 
 ---
 
-## Stage 4 — Ratify
+## Stage 4 — Ratify Prompt + Final Decision
 
-*Purpose: Once all perspectives are aligned, the formal approval prompt is a
-confirmation, not a decision. The groundwork has been laid; Stage 4 is the
-moment of commitment.*
+*Purpose: Once all perspectives are aligned (no outstanding `disagree` handles),
+the formal approval prompt is a confirmation, not a decision. The groundwork has
+been laid; Stage 4 is the moment of commitment.*
 
-**Ratification prompt (Orchestrator says):**
+*Precondition: All agents returned `yes` or `yes after refine` in Stage 2 (or
+Stage 3's repeated Stage 2). If any `disagree` remains unresolved, return to
+Stage 3 and do not proceed to Stage 4.*
 
-> "All perspectives are aligned on DEC-{NNNN}. To confirm:
+**Final position statement (after all revisions):**
+
+> {One paragraph summarizing the final state of the proposed change after
+> incorporating all Stage 2 and Stage 3 refinements. This is the definitive
+> description of what will be applied if ratified.}
+
+**Ratification prompt (Orchestrator says — Level-5 step, user must type yes/no):**
+
+> *"All perspectives are aligned on DEC-{NNNN}. To confirm:*
 >
-> **Proposed change:** {one-sentence summary}
-> **Affected files:** {comma-separated list}
-> **Reversibility:** {reversible / irreversible}
+> ***Proposed change:** {one-sentence summary of final position}*
+> ***Affected files:** {comma-separated list}*
+> ***Reversibility:** {reversible / irreversible}*
 >
-> Apply DEC-{NNNN}? (yes/no)"
+> *Apply DEC-{NNNN}? (yes/no)"*
 
-**On `yes`:**
+**Decision outcome:** ratified | rejected | deferred
 
-- Apply the change immediately.
-- Commit with message: `DEC-{NNNN}: {description}`
-- Move this file to `.council/proposed/archive/DEC-{NNNN}.md`
-- Write decision-log entry with:
-  - `nemawashi_walkthrough_version: {N}` (revision count; 0 if no revisions)
-  - `reversibility: {reversible | irreversible}`
-  - `status: ratified`
-  - `applied_at: {ISO-8601 timestamp}`
-- Audit-log entry: position paper archived at path above
+---
 
-**On `no`:**
+**On `yes` (ratified):**
 
-- Log as `status: rejected`.
-- Do NOT apply the change.
-- This file remains in `.council/proposed/` for reference.
-- Decision-log entry with `status: rejected`, `applied_automatically: false`.
+1. Apply the change immediately.
+2. Commit with message: `DEC-{NNNN}: {description}`.
+3. **Move** this file from `.council/proposed/` to
+   `.council/proposed/archive/DEC-{NNNN}.md` — the original is moved (not
+   copied, not deleted) so the audit chain is preserved. Per v2.1 amendment A4:
+   the `decision-log.jsonl` `nemawashi_walkthrough_version` path must remain
+   resolvable at this archive location.
+4. Append audit-log entry: *"DEC-{NNNN} position paper archived at
+   `.council/proposed/archive/DEC-{NNNN}.md`"*
+5. Emit DEC entry via `scripts/append-decision.py`:
+
+```yaml
+decision_type: course-correction-major
+dec_id: DEC-{NNNN}
+nemawashi_walkthrough_version: {N}  # 0 if no Stage 3 revisions; ≥1 after cycles
+reversibility: {reversible | irreversible}
+status: ratified
+applied_at: {ISO-8601 timestamp}
+applied_automatically: false
+user_approval_required: true
+council_agents_involved: [architect, scope-guardian, henkaten-detector, retrospective]
+evidence_cited: [{evidence_class, verification, summary}]
+linked_henka_id: {HK-NNNN if applicable}
+sprint_context: {NN}
+```
+
+**Archive path:** `.council/proposed/archive/DEC-{NNNN}.md`
+
+---
+
+**On `no` (rejected):**
+
+1. Log `status: rejected`. Do NOT apply the change.
+2. This file remains in `.council/proposed/` for reference.
+3. Emit DEC entry via `scripts/append-decision.py`:
+
+```yaml
+decision_type: course-correction-major
+dec_id: DEC-{NNNN}
+nemawashi_walkthrough_version: {N}
+reversibility: {reversible | irreversible}
+status: rejected
+applied_automatically: false
+user_approval_required: true
+```
 
 ---
 
