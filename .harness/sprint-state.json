@@ -1,5 +1,5 @@
 {
-  "current_sprint": 6,
+  "current_sprint": 7,
   "sprints": [
     {
       "number": 1,
@@ -115,7 +115,37 @@
       ],
       "process_notes": "Main-thread fallback eval \u2014 3 forked-evaluator dispatches stopped before writing; orchestrator authored eval per harness Operational Notes. cli-tool code_quality docked 5\u21924 to reflect Generator/Evaluator separation regression. Contract-side caveats on SC-2 (WSL stub), SC-8 (regex over-match on printf escape), SC-11 (cosmetic case drift) \u2014 all graded PASS via faithful interpretation.",
       "completed_at": "2026-05-08T19:00:00Z"
+    },
+    {
+      "number": 6,
+      "title": "S4 \u2014 Council Autorun + Andon Protocol + Verification Spot-Check",
+      "status": "PASS",
+      "rounds": 1,
+      "criteria_passed": 13,
+      "criteria_total": 13,
+      "weighted_score": 100,
+      "should_not_gate": "PASS_WITH_CAVEAT",
+      "should_not_gate_caveat": "Gate 3 (no network calls in scripts/run-verification.py) reported FAIL on verbatim regex `\\bcurl\\b|\\bwget\\b` matching the literal strings inside _DISALLOWED_TOKENS at scripts/run-verification.py:77, where these tokens are enumerated as DENIED commands. Direct grep confirms zero network-tool subprocess invocations. Gate intent satisfied; verbatim verification command does not distinguish 'contains string curl' from 'executes curl'. Override matches Sprint 3 Gate 5 precedent (PASS_WITH_CAVEAT for contract-side regex over-match).",
+      "rubric_scores": {
+        "functionality": 5,
+        "usability": 5,
+        "error_handling": 5,
+        "code_quality": 4,
+        "weighted_rubric_total": 4.85
+      },
+      "contract_negotiation_rounds": 2,
+      "implementation_commits": [
+        "6876849"
+      ],
+      "implementation_passes": [
+        "Pass A: run-verification.py + test",
+        "Pass B: andon-protocol enrichment",
+        "Pass C: council-autorun SKILL.md",
+        "Pass D: dummy-project fixture + S4 acceptance test"
+      ],
+      "process_notes": "Implementation split across 4 narrow Generator passes per .harness/sprint-06-playbook.md. Zero forked-subagent stalls \u2014 meaningful improvement over Sprint 5's pattern. Orchestrator committed after Pass D per the playbook's 'Generator stages, orchestrator commits' approach. Gate 3 false-FAIL handled via PASS_WITH_CAVEAT (Sprint 3 precedent). code_quality docked 5\u21924 for the gate-overmatch resolution.",
+      "completed_at": "2026-05-09T09:00:00Z"
     }
   ],
-  "last_updated": "2026-05-08T18:56:04-04:00"
+  "last_updated": "2026-05-09T08:53:09-04:00"
 }
