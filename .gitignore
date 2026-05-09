@@ -1,0 +1,29 @@
+# Subagent / orchestrator scratch files
+# These get created in the working tree by Generator/Evaluator subagents
+# during contract verification and self-review. They are not deliverables
+# and should never be committed or trigger cross-sprint scope-drift gates.
+tmp_*.py
+tmp_*.md
+check_*.py
+gate*_test.py
+sc*_check.py
+sc_remaining.py
+
+# Python build / cache
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# Local-only env / secrets (defense-in-depth — none expected in this repo)
+.env
+.env.local
