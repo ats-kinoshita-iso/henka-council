@@ -20,11 +20,14 @@ if [[ "$target_dir" != "." ]] && [[ "$target_dir" != "" ]]; then
     mkdir -p "$target_dir" 2>/dev/null || true
 fi
 
-# Append marker
+# Append marker. Format matches the legacy mixed-case "Stopped." prose used
+# throughout .harness/progress.md. The trailing HTML comment carries the
+# SESSION_STOPPED tag so machine readers (e.g. the sprint-05 contract SC-11
+# verification) can still locate session boundaries by substring match.
 {
     echo ""
     echo "## Session ${timestamp}"
-    echo "SESSION_STOPPED. Current sprint state should be committed."
+    echo "Stopped. Current sprint state should be committed.  <!-- SESSION_STOPPED -->"
 } >> "$TARGET_FILE" 2>/dev/null || {
     echo "session-stopped-marker: failed to write to ${TARGET_FILE}" >&2
     exit 0

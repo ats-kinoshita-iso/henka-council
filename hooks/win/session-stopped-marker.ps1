@@ -33,12 +33,15 @@ if ($targetDir -and -not (Test-Path $targetDir)) {
     }
 }
 
-# Append marker
+# Append marker. Format matches the legacy mixed-case "Stopped." prose used
+# throughout .harness/progress.md. The trailing HTML comment carries the
+# SESSION_STOPPED tag so machine readers (e.g. the sprint-05 contract SC-11
+# verification) can still locate session boundaries by substring match.
 try {
     $marker = @(
         ''
         "## Session $timestamp"
-        'SESSION_STOPPED. Current sprint state should be committed.'
+        'Stopped. Current sprint state should be committed.  <!-- SESSION_STOPPED -->'
     ) -join "`n"
     Add-Content -Path $TargetFile -Value $marker -Encoding UTF8
 } catch {
