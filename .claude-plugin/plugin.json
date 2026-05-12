@@ -1,6 +1,6 @@
 {
   "name": "henkaten-council",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Atsushi Kinoshita",
   "license": "Apache-2.0",
   "description": "Henkaten Council plugin for Claude Code — governance layer that orchestrates change-point detection, autonomous decision audit, and continuous improvement across trine-eval sprints.",
