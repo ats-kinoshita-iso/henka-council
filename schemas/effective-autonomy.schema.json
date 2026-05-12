@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "effective-autonomy.schema.json",
+  "title": "EffectiveAutonomy",
+  "description": "Live effective autonomy state observable at .council/state/effective-autonomy.json. Written by scripts/update-effective-autonomy.py on every change (R10/Q20/§11.11 NEW v2).",
+  "type": "object",
+  "required": ["level", "last_change", "reason"],
+  "properties": {
+    "level": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5,
+      "description": "Current effective autonomy level (0–5). May differ from nominal level due to dynamic floor drops (R10)."
+    },
+    "last_change": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the most recent level change."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Human-readable explanation of why the current level is what it is (e.g. 'Two consecutive sprint FAILs in sprints 4 and 5 — dropped from L4 to L3 per R10')."
+    },
+    "restored_when": {
+      "type": ["string", "null"],
+      "description": "Description of the condition that will restore the nominal level (e.g. 'After 1 PASS'). Null if already at nominal level."
+    },
+    "trigger_history": {
+      "type": "array",
+      "description": "Most recent N trigger events (default 10) for debugging and pull-rate analysis. Each item records a level transition event.",
+      "items": {
+        "type": "object",
+        "required": ["trigger_type", "timestamp", "from_level", "to_level"],
+        "properties": {
+          "trigger_type": {
+            "type": "string",
+            "enum": [
+              "consecutive-fail-drop",
+              "andon-stop-drop",
+              "high-risk-henkaten-drop",
+              "restore-autonomy",
+              "manual-override",
+              "sprint-pass-restore",
+              "initial"
+            ],
+            "description": "Type of event that caused this level transition."
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when this trigger occurred."
+          },
+          "from_level": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5,
+            "description": "Effective autonomy level before this transition."
+          },
+          "to_level": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5,
+            "description": "Effective autonomy level after this transition."
+          },
+          "triggered_by": {
+            "type": "string",
+            "description": "Agent ID or event source that triggered this transition."
+          },
+          "linked_henka_id": {
+            "type": "string",
+            "description": "HK-NNNN of the henkaten record that triggered this transition, if any."
+          },
+          "notes": {
+            "type": "string",
+            "description": "Additional context about this trigger."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

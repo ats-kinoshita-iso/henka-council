@@ -1,0 +1,30 @@
+{
+  "council_version": "0.1.0",
+  "target_project": "henka-council",
+  "autonomy_level": 4,
+  "review_frequency": "every-sprint",
+  "cycle_length": 5,
+  "dispatch_mode": "sequential",
+  "andon_takt_seconds": 600,
+  "dynamic_autonomy_thresholds": {
+    "consecutive_fail_count": 2,
+    "andon_stop_consecutive_count": 3,
+    "andon_stop_distinct_originators_required": 2
+  },
+  "halt_conditions": {
+    "blocking_henkaten": true,
+    "high_risk_henkaten": true,
+    "max_consecutive_failures": 3,
+    "user_intervention_requested": true
+  },
+  "custom_henkaten_categories": [
+    {
+      "category_id": "custom-rag-corpus-drift",
+      "fourM_axis": "Material",
+      "description": "RAG corpus content drift detected via document hash comparison",
+      "detection_signals": ["document hash differs from indexed snapshot"],
+      "default_impact_level": "actionable",
+      "recommended_agents": ["rag-source", "scope-guardian"]
+    }
+  ]
+}

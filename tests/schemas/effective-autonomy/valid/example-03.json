@@ -1,0 +1,31 @@
+{
+  "level": 4,
+  "last_change": "2026-05-07T09:00:00Z",
+  "reason": "Autonomy restored after successful sprint 6 PASS following drop from andon-stop event.",
+  "restored_when": null,
+  "trigger_history": [
+    {
+      "trigger_type": "initial",
+      "timestamp": "2026-04-01T00:00:00Z",
+      "from_level": 0,
+      "to_level": 4
+    },
+    {
+      "trigger_type": "andon-stop-drop",
+      "timestamp": "2026-05-05T11:00:00Z",
+      "from_level": 4,
+      "to_level": 2,
+      "triggered_by": "sentinel",
+      "linked_henka_id": "HK-0022",
+      "notes": "Andon STOP issued during sprint 6 — dropped to L2 per §7.0.1."
+    },
+    {
+      "trigger_type": "sprint-pass-restore",
+      "timestamp": "2026-05-07T09:00:00Z",
+      "from_level": 2,
+      "to_level": 4,
+      "triggered_by": "orchestrator",
+      "notes": "Sprint 6 PASS confirmed. Autonomy restored to nominal L4."
+    }
+  ]
+}

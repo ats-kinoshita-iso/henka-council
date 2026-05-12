@@ -1,0 +1,16 @@
+{
+  "level": 2,
+  "last_change": "2026-05-04T15:30:00Z",
+  "reason": "Two consecutive sprint FAILs in sprints 4 and 5 — dropped from L3 to L2 per R10.",
+  "restored_when": "After 1 PASS",
+  "trigger_history": [
+    {
+      "trigger_type": "consecutive-fail-drop",
+      "timestamp": "2026-05-04T15:30:00Z",
+      "from_level": 3,
+      "to_level": 2,
+      "triggered_by": "orchestrator",
+      "notes": "Two consecutive FAILs triggered automatic floor drop."
+    }
+  ]
+}

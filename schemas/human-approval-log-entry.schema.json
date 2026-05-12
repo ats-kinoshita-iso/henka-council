@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "human-approval-log-entry.schema.json",
+  "title": "HumanApprovalLogEntry",
+  "description": "A record of a human approval event, capturing what was approved or rejected and the context.",
+  "type": "object",
+  "required": ["approval_id", "timestamp", "approval_type", "status"],
+  "properties": {
+    "approval_id": {
+      "type": "string",
+      "description": "Unique identifier for this approval record.",
+      "pattern": "^APPR-[0-9]{4,}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the approval decision."
+    },
+    "approval_type": {
+      "type": "string",
+      "enum": [
+        "minor-correction",
+        "nemawashi-major",
+        "yokoten-ratification",
+        "standard-work-proposal",
+        "autonomy-restore",
+        "custom"
+      ],
+      "description": "Category of approval requested."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["approved", "rejected", "revised", "pending"],
+      "description": "Outcome of the approval request."
+    },
+    "requested_by_agent": {
+      "type": "string",
+      "description": "Agent ID that requested this approval."
+    },
+    "sprint_context": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Sprint number during which this approval was requested."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of what is being approved."
+    },
+    "linked_decision_id": {
+      "type": "string",
+      "description": "DEC-NNNN identifier of the associated decision, if any.",
+      "pattern": "^DEC-[0-9]{4,}$"
+    },
+    "linked_henka_id": {
+      "type": "string",
+      "description": "HK-NNNN identifier of the associated henkaten record, if any.",
+      "pattern": "^HK-[0-9]{4,}$"
+    },
+    "position_paper_path": {
+      "type": "string",
+      "description": "Path to the nemawashi position paper (for nemawashi-major approvals)."
+    },
+    "revision_notes": {
+      "type": "string",
+      "description": "Notes from the user explaining any requested revisions."
+    },
+    "effective_autonomy_at_request": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5,
+      "description": "Effective autonomy level at the time the approval was requested."
+    }
+  },
+  "additionalProperties": false
+}

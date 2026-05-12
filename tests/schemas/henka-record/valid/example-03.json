@@ -1,0 +1,40 @@
+{
+  "henka_id": "HK-0003",
+  "sprint_context": 3,
+  "fourM_axis": "Material",
+  "category": "source-material-change",
+  "change_origin": "passive",
+  "impact_level": "actionable",
+  "description": "Upstream dependency jsonschema updated from 4.18.0 to 4.26.0, introducing potential schema validation behavior changes.",
+  "affected_artifacts": [
+    "scripts/validate-council-config.py",
+    "scripts/validate-henka-record.py",
+    "scripts/validate-decision-log.py"
+  ],
+  "response_type": "propose-to-user",
+  "evidence": [
+    {
+      "claim": "jsonschema package version changed in the Python environment",
+      "evidence_class": "observed",
+      "confidence": "high",
+      "verification": "python -m json.tool schemas/council-config.schema.json"
+    }
+  ],
+  "yokoten": {
+    "applicable_to_subsequent_sprints": ["all"],
+    "adaptation_notes": "Pin jsonschema version in pyproject.toml or requirements.txt for any sprint that adds validator scripts. Validate behavior against the new version before closing the sprint.",
+    "deployed_to": [
+      {
+        "sprint": "sprint-04",
+        "applied_at": "2026-05-08T09:00:00Z",
+        "decision_id": "DEC-0005",
+        "adaptation_taken": "Added jsonschema>=4.0 pin and verified all existing validators pass with 4.26.0"
+      }
+    ]
+  },
+  "status": "closed",
+  "detected_at": "2026-05-07T16:00:00Z",
+  "detected_by_agent": "henkaten-detector",
+  "closed_at": "2026-05-08T09:00:00Z",
+  "resolution_summary": "Pinned jsonschema dependency and confirmed no behavioral regressions."
+}

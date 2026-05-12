@@ -1,0 +1,27 @@
+{
+  "henka_id": "HK-0001",
+  "sprint_context": 1,
+  "fourM_axis": "Method",
+  "category": "scope-change",
+  "change_origin": "active",
+  "impact_level": "actionable",
+  "description": "Sprint 1 scope expanded to include 11 schemas instead of originally planned 9.",
+  "affected_artifacts": [
+    "schemas/effective-autonomy.schema.json",
+    ".harness/contracts/sprint-01.md"
+  ],
+  "response_type": "propose-to-user",
+  "evidence": [
+    {
+      "claim": "effective-autonomy.schema.json was added to sprint scope after initial planning",
+      "evidence_class": "observed",
+      "confidence": "high",
+      "verification": "git diff main..HEAD -- .harness/contracts/sprint-01.md",
+      "source_file": ".harness/contracts/sprint-01.md",
+      "source_line_range": "28-30"
+    }
+  ],
+  "status": "classified",
+  "detected_at": "2026-05-07T12:00:00Z",
+  "detected_by_agent": "henkaten-detector"
+}

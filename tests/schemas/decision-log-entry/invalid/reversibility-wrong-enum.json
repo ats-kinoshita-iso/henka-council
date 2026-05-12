@@ -1,0 +1,10 @@
+{
+  "decision_id": "DEC-0101",
+  "timestamp": "2026-05-07T12:00:00Z",
+  "decision_type": "course-correction-minor",
+  "decision_outcome": "applied",
+  "autonomy_level_used": 3,
+  "effective_autonomy_at_decision": 3,
+  "reversibility": "reversible-ish",
+  "description": "reversibility set to invalid enum value 'reversible-ish' — v2 enum violation (R9)."
+}

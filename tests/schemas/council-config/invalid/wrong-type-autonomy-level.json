@@ -1,0 +1,6 @@
+{
+  "council_version": "0.1.0",
+  "target_project": "my-app",
+  "autonomy_level": "four",
+  "review_frequency": "every-sprint"
+}

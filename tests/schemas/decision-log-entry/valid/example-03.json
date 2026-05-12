@@ -1,0 +1,28 @@
+{
+  "decision_id": "DEC-0003",
+  "timestamp": "2026-05-08T09:00:00Z",
+  "decision_type": "yokoten-ratification",
+  "decision_outcome": "applied",
+  "autonomy_level_used": 5,
+  "effective_autonomy_at_decision": 5,
+  "reversibility": "irreversible",
+  "sprint_context": 3,
+  "applied_automatically": false,
+  "user_approval_required": true,
+  "user_approval_status": "approved",
+  "description": "Ratified yokoten learning: pin jsonschema dependency across all future sprints. Irreversible — commits the standard-work document.",
+  "affected_files": [
+    ".council/standard-work.json",
+    "scripts/validate-council-config.py"
+  ],
+  "council_agents_involved": ["orchestrator", "retrospective", "scope-guardian"],
+  "linked_henka_id": "HK-0003",
+  "nemawashi_walkthrough_version": "DEC-0003.md",
+  "evidence_cited": [
+    {
+      "claim": "jsonschema 4.26.0 validated successfully against all 11 schemas",
+      "evidence_class": "observed",
+      "confidence": "high"
+    }
+  ]
+}

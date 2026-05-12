@@ -1,0 +1,196 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "henka-record.schema.json",
+  "title": "HenkaRecord",
+  "description": "A single change-point record appended to henka-register.jsonl. Encodes henkaten classification per the 4M taxonomy (§6) and v2 revisions R1/R2/R4/R6/R8.",
+  "type": "object",
+  "required": [
+    "henka_id",
+    "sprint_context",
+    "fourM_axis",
+    "category",
+    "change_origin",
+    "impact_level",
+    "description",
+    "affected_artifacts",
+    "response_type",
+    "evidence",
+    "status",
+    "detected_at"
+  ],
+  "properties": {
+    "henka_id": {
+      "type": "string",
+      "pattern": "^HK-[0-9]{4,}$",
+      "description": "Unique identifier for this change-point record. Format: HK-NNNN."
+    },
+    "sprint_context": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Sprint number during which this change-point was detected."
+    },
+    "fourM_axis": {
+      "type": "string",
+      "enum": ["Man", "Machine", "Material", "Method"],
+      "description": "Primary 4M classification axis for this change point. R8."
+    },
+    "category": {
+      "type": "string",
+      "description": "Sub-type within the 4M axis (e.g. agent-capability-change, scope-change). Validated against built-in 13 sub-types + custom_henkaten_categories from config."
+    },
+    "change_origin": {
+      "type": "string",
+      "enum": ["active", "passive"],
+      "description": "active = deliberately initiated (henkoten 変更点); passive = emerged unbidden (henkaten 変化点 strict sense). Passive changes default to lower confidence/impact unless corroborated by a second signal. R1."
+    },
+    "impact_level": {
+      "type": "string",
+      "enum": ["informational", "actionable", "blocking", "high-risk"],
+      "description": "Impact classification: informational (log-only) → actionable (attend) → blocking (halt) → high-risk (stop immediately)."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of the change point."
+    },
+    "affected_artifacts": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "File paths or artifact identifiers affected by this change."
+    },
+    "response_type": {
+      "type": "string",
+      "enum": ["log-only", "auto-correct", "propose-to-user", "escalate", "andon-alert", "andon-stop"],
+      "description": "How this change-point should be handled."
+    },
+    "evidence": {
+      "type": "array",
+      "description": "Evidence items supporting this classification. Each observed claim must carry a re-runnable verification command (R4).",
+      "items": {
+        "type": "object",
+        "required": ["claim", "evidence_class", "confidence"],
+        "properties": {
+          "claim": {
+            "type": "string",
+            "description": "The specific claim being made."
+          },
+          "evidence_class": {
+            "type": "string",
+            "enum": ["observed", "inferred", "speculative"],
+            "description": "observed = directly witnessed and verifiable; inferred = derived from observed claims; speculative = hypothesis only."
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["high", "medium", "low"],
+            "description": "Confidence level for this claim."
+          },
+          "verification": {
+            "type": "string",
+            "description": "A re-runnable command conformant with the §4.5 verification syntax allowlist (e.g. 'git log --oneline -5', 'grep -r pattern src/', 'cat file.json | jq .field'). Required when evidence_class is 'observed'."
+          },
+          "source_file": {
+            "type": "string",
+            "description": "Source file path where this evidence was found."
+          },
+          "source_line_range": {
+            "type": "string",
+            "description": "Line range in source_file (e.g. '42-57')."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "andon_signal": {
+      "type": "object",
+      "description": "Optional. Present if the agent that detected this Henkaten issued an andon signal (R2, §7.0.1).",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["alert", "stop"],
+          "description": "alert = recoverable, takt-bounded; stop = committed halt requiring user resume."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Concise statement of what triggered the signal."
+        },
+        "evidence": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "File:line or command output references supporting the signal."
+        },
+        "swarm_request": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Agent IDs suggested for swarm dispatch. Orchestrator decides final composition."
+        }
+      },
+      "required": ["type", "reason"],
+      "additionalProperties": false
+    },
+    "yokoten": {
+      "type": "object",
+      "description": "Optional. Populated by retrospective agent when status transitions to closed. Encodes learning propagation (R6, §2.6 Pillar 6).",
+      "properties": {
+        "applicable_to_subsequent_sprints": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Sprint identifiers this learning applies to, or ['all'] for all remaining sprints."
+        },
+        "adaptation_notes": {
+          "type": "string",
+          "description": "Guidance for how this learning translates to subsequent sprints. NOT a verbatim copy — adapt the principle, not the exact fix."
+        },
+        "deployed_to": {
+          "type": "array",
+          "description": "Sprints where this learning was applied.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sprint": {
+                "type": "string",
+                "description": "Sprint identifier where learning was deployed."
+              },
+              "applied_at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timestamp when adaptation was applied."
+              },
+              "decision_id": {
+                "type": "string",
+                "description": "DEC-NNNN identifier of the ratification decision."
+              },
+              "adaptation_taken": {
+                "type": "string",
+                "description": "Brief description of how the learning was adapted."
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "string",
+      "enum": ["classified", "assessed", "responded", "closed"],
+      "description": "Lifecycle status of this change-point record."
+    },
+    "detected_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this change-point was detected."
+    },
+    "detected_by_agent": {
+      "type": "string",
+      "description": "Agent ID that detected this change-point."
+    },
+    "closed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this record was closed."
+    },
+    "resolution_summary": {
+      "type": "string",
+      "description": "Brief summary of how the change-point was resolved."
+    }
+  },
+  "additionalProperties": false
+}

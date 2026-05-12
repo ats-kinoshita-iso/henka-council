@@ -1,0 +1,25 @@
+{
+  "henka_id": "HK-0003",
+  "sprint_context": 1,
+  "fourM_axis": "Machine",
+  "category": "tool-behavior-change",
+  "change_origin": "passive",
+  "impact_level": "blocking",
+  "description": "andon_signal.type set to invalid enum value 'warning' — must be alert or stop.",
+  "affected_artifacts": ["scripts/validate-henka-record.py"],
+  "response_type": "andon-alert",
+  "evidence": [
+    {
+      "claim": "Tool returned unexpected output",
+      "evidence_class": "observed",
+      "confidence": "high",
+      "verification": "git diff HEAD~1 -- scripts/validate-henka-record.py"
+    }
+  ],
+  "andon_signal": {
+    "type": "warning",
+    "reason": "Invalid andon type for testing purposes"
+  },
+  "status": "assessed",
+  "detected_at": "2026-05-07T12:00:00Z"
+}

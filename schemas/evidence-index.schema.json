@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "evidence-index.schema.json",
+  "title": "EvidenceIndex",
+  "description": "Optional index of evidence citations across all council records, enabling cross-reference and deduplication of observed claims.",
+  "type": "object",
+  "required": ["index_version", "created_at", "entries"],
+  "properties": {
+    "index_version": {
+      "type": "string",
+      "description": "Semantic version of this evidence index.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this index was created."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the last update."
+    },
+    "entries": {
+      "type": "array",
+      "description": "Evidence citation entries.",
+      "items": {
+        "type": "object",
+        "required": ["citation_id", "evidence_class", "claim", "confidence"],
+        "properties": {
+          "citation_id": {
+            "type": "string",
+            "description": "Unique identifier for this evidence citation.",
+            "pattern": "^EV-[0-9]{4,}$"
+          },
+          "evidence_class": {
+            "type": "string",
+            "enum": ["observed", "inferred", "speculative"],
+            "description": "Classification of this evidence."
+          },
+          "claim": {
+            "type": "string",
+            "description": "The specific claim supported by this evidence."
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["high", "medium", "low"],
+            "description": "Confidence level for this claim."
+          },
+          "verification": {
+            "type": "string",
+            "description": "Re-runnable command for observed claims, conformant with §4.5 allowlist."
+          },
+          "source_file": {
+            "type": "string",
+            "description": "Source file path."
+          },
+          "source_line_range": {
+            "type": "string",
+            "description": "Line range in source_file."
+          },
+          "referenced_by": {
+            "type": "array",
+            "description": "Record identifiers (HK-NNNN, DEC-NNNN) that cite this evidence.",
+            "items": {"type": "string"}
+          },
+          "sprint_context": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Sprint in which this evidence was gathered."
+          },
+          "gathered_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when this evidence was collected."
+          },
+          "gathered_by_agent": {
+            "type": "string",
+            "description": "Agent that gathered this evidence."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "total_entries": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of evidence entries in this index."
+    }
+  },
+  "additionalProperties": false
+}

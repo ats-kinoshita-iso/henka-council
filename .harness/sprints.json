@@ -1,0 +1,164 @@
+{
+  "sprints": [
+    {
+      "number": 1,
+      "title": "D1 — Schema Definitions",
+      "features": [
+        "schemas/council-config.schema.json (§11.1)",
+        "schemas/council-manifest.schema.json (§11.2)",
+        "schemas/henka-record.schema.json — v2 revised: fourM_axis, change_origin, andon_signal, verification in evidence, yokoten block (§11.3, R1/R2/R4/R6/R8)",
+        "schemas/decision-log-entry.schema.json — v2 revised: effective_autonomy_at_decision, reversibility, nemawashi_walkthrough_version, andon_resolution (§11.4, R3/R5/R9/R10)",
+        "schemas/standard-work.schema.json (§11.5)",
+        "schemas/audit-log-entry.schema.json (§11.6)",
+        "schemas/human-approval-log-entry.schema.json (§11.7)",
+        "schemas/conflict-resolution-entry.schema.json (§11.8)",
+        "schemas/evidence-index.schema.json (§11.9)",
+        "schemas/integration-signal.schema.json — includes taxonomy_version field (§11.10)",
+        "schemas/effective-autonomy.schema.json — NEW v2/R10/Q20: level, last_change, reason, restored_when, trigger_history (§11.11)",
+        "scripts/validate-council-config.py",
+        "scripts/validate-henka-record.py",
+        "scripts/validate-decision-log.py",
+        "tests/schemas/<each-schema>/valid/*.json — ≥3 valid fixtures per schema (§15.5, v2.1 amendment A8)",
+        "tests/schemas/<each-schema>/invalid/*.json — ≥3 invalid fixtures per schema with documented violations (§15.5)"
+      ],
+      "estimated_complexity": "medium",
+      "dependencies": []
+    },
+    {
+      "number": 2,
+      "title": "D2 — Agent Contracts",
+      "features": [
+        "agents/orchestrator.md — Level 4, tools: Read/Glob/Grep/Bash/Write/Task, context: inherit; andon authority + evidence obligations (§7.1)",
+        "agents/architect.md — Level 2, tools: Read/Glob/Grep, context: fork; coherence rating, drift indicators, verification commands (§7.2)",
+        "agents/scope-guardian.md — Level 2, tools: Read/Glob/Grep, context: fork; feature integrity, scope drift, exact-string matching (§7.3)",
+        "agents/henkaten-detector.md — Level 1, tools: Read/Glob/Grep, context: fork; 4M classification, change_origin, scheduled-vs-unscheduled suppression (§7.4, §6.7, v2.1 amendment A3)",
+        "agents/retrospective.md — Level 2, context: fork; three modes (mini/pdca/jishuken) with explicit per-mode standard-work-proposal rules (§7.5)",
+        "agents/qa-regression.md — Level 2, context: fork; status: proposed; not in default fan-out (§7.6, Q4)",
+        "agents/rag-source.md — Level 1, context: fork; status: proposed; not in default fan-out (§7.7, Q4)",
+        "instructions/controlled-artifacts.md (§4)",
+        "instructions/evidence-first.md — v2 revised: verification syntax allowlist, evidence_class, confidence required (§4, R4, v2.1 amendment A1)",
+        "instructions/human-approval.md — v2 revised: nemawashi walkthrough for major decisions (§4, R5)",
+        "instructions/andon-protocol.md — thank-the-puller, alert vs stop, swarming, Rule 4 carve-out (§4, R2/R3, v2.1 amendment A10)",
+        "instructions/prompt-injection-defense.md (§4)",
+        "templates/dispatch-envelope.md — single source of truth for all agent dispatch; references andon-protocol.md and evidence-first.md (§9.6)",
+        "templates/nemawashi-position-paper.md — four-stage walkthrough structure (§8.2 Step 1D, R5)"
+      ],
+      "estimated_complexity": "medium",
+      "dependencies": [1]
+    },
+    {
+      "number": 3,
+      "title": "S1 — Kickoff Skill + Plugin Bootstrap",
+      "features": [
+        ".claude-plugin/plugin.json — name: henkaten-council, version, author, license (§4, Q1/Q2)",
+        ".mcp.json — placeholder, empty (§4, §3.3 Option A)",
+        ".claude/settings.json — tiered Bash allowlist: allow/ask/deny tiers for git commands (§9.3)",
+        "CLAUDE.md — plugin-side CLAUDE.md loaded when council skills run (§4)",
+        "README.md — user-facing intro + install instructions including hook installation self-check note (§4)",
+        "LICENSE (§4)",
+        "skills/council-kickoff/SKILL.md — creates complete .council/ baseline (config, manifest, three jsonl files, standard-work, five directories including proposed/archive/, state/effective-autonomy.json); configures andon_takt_seconds: 600 and dynamic_autonomy_thresholds with andon_stop_distinct_originators_required: 2; writes governance signal to .harness/config.json; delegates to trine-eval; surfaces git merge opt-in one-time setup (§8.1, v2.1 amendments A2/A4/A6/A11)",
+        "agents/architect.md — baseline version for S1 acceptance (§7.2)",
+        "agents/orchestrator.md — baseline version for S1 acceptance (§7.1)"
+      ],
+      "estimated_complexity": "low",
+      "dependencies": [1, 2]
+    },
+    {
+      "number": 4,
+      "title": "S2 — Core Agents + State Files",
+      "features": [
+        "agents/scope-guardian.md — full implementation per D2 contract (§7.3)",
+        "agents/henkaten-detector.md — full implementation per D2 contract including scheduled-vs-unscheduled suppression (§7.4, §6.7, v2.1 amendment A3)",
+        "agents/retrospective.md — mini mode only at this point; pdca and jishuken modes deferred to S6 (§7.5)",
+        "scripts/append-henka.py — validates against henka-record.schema.json then appends; calls git add (§4, §5.3)",
+        "scripts/append-decision.py — validates against decision-log-entry.schema.json then appends; calls git add (§4, §5.3)",
+        "scripts/compute-evidence-class.py — helper for evidence classification (§4)",
+        "scripts/update-effective-autonomy.py — writes .council/state/effective-autonomy.json; trigger_history maintained (§9.7, R10/Q20)",
+        "state/effective-autonomy.json initial write path verified end-to-end (§9.7)"
+      ],
+      "estimated_complexity": "medium",
+      "dependencies": [3]
+    },
+    {
+      "number": 5,
+      "title": "S3 — Hooks + Reversibility + Effective-Autonomy Tracking",
+      "features": [
+        "hooks/enforce-append-only.sh — PreToolUse: blocks Write/Edit on henka-register.jsonl, decision-log.jsonl, audit-log.jsonl (§9.4)",
+        "hooks/enforce-reversibility.sh — PreToolUse: reads .council/state/effective-autonomy.json level; blocks irreversible Bash commands at level < 5 (§9.4.2, R9)",
+        "hooks/log-tool-call.sh — PostToolUse: appends to audit-log.jsonl; tracks andon_pull_count per agent (§9.4, Q14)",
+        "hooks/session-stopped-marker.sh — Stop hook: marks uncommitted sprint state (§9.4)",
+        "hooks/win/enforce-append-only.ps1 — PowerShell equivalent (v2.1 amendment A7)",
+        "hooks/win/enforce-reversibility.ps1 — PowerShell equivalent (v2.1 amendment A7)",
+        "hooks/win/log-tool-call.ps1 — PowerShell equivalent (v2.1 amendment A7)",
+        "hooks/win/session-stopped-marker.ps1 — PowerShell equivalent (v2.1 amendment A7)",
+        "scripts/rotate-audit-log.py — rotates at 50 MB threshold; produces gzip archive + fresh current file + DEC entry with SHA-256 (§13, v2.1 amendment A12)",
+        "CI configuration: hook tests on both windows-latest (PowerShell) and ubuntu-latest (Bash) (§15.5, v2.1 amendment A7)",
+        "Hook fixture tests: enforce-append-only, enforce-reversibility, log-tool-call, rotate-audit-log per §15.5 test specifications"
+      ],
+      "estimated_complexity": "medium",
+      "dependencies": [4]
+    },
+    {
+      "number": 6,
+      "title": "S4 — Council Autorun + Andon Protocol + Verification Spot-Check",
+      "features": [
+        "skills/council-autorun/SKILL.md — full Steps 1A through 1I (§8.2):",
+        "  Step 1A: pre-sprint henkaten check (plugin manifest diff, unresolved record check, change_origin classification per R1)",
+        "  Step 1A.5: yokoten review — surfaces adaptation prompts; ratify-once shortcut for yokoten naming ≥3 sprints or 'all' (§8.2 Step 1A.5, v2.1 amendment A9)",
+        "  Step 1B: delegates to /trine-eval:harness-sprint",
+        "  Step 1C: fan-out (sequential default per Q6) + parallel swarm dispatch unconditionally (v2.1 amendment A6) + andon handling + verification spot-check via scripts/run-verification.py with allowlist enforcement (v2.1 amendment A1)",
+        "  Step 1D: reversibility check before minor/major classification (R9); minor reversible = auto-apply; major or irreversible = nemawashi walkthrough stub (full walkthrough in S5)",
+        "  Step 1E: decision-log entry with effective_autonomy_at_decision and reversibility",
+        "  Step 1F: halt conditions including dynamic autonomy floor breach; andon-stop requires ≥2 distinct originators (v2.1 amendment A2)",
+        "  Step 1G: context compaction to .council/sessions/<timestamp>.md",
+        "  Step 1H: per-sprint mini retrospective inline (calls /council-retro-mini skill, S6 implements full skill; stub acceptable in S4)",
+        "  Step 1I: next-sprint or per-cycle trigger logic",
+        "scripts/run-verification.py — allowlist enforcement, 10s timeout, project-root CWD, pre-invocation string check; non-conformant strings rejected with agent-capability-change Henkaten logged (§7.0.2, v2.1 amendment A1)",
+        "instructions/andon-protocol.md — full implementation including thank-the-puller verbatim acknowledgment, Rule 4 carve-out, pull-rate tracking reference (§7.0.1, v2.1 amendment A10)",
+        "Dynamic autonomy floor: distinct-originator corroboration enforced; same-agent repeated stops tracked as pull-rate anomaly not floor drop (§2.4.3, v2.1 amendment A2)",
+        "Scheduled-vs-unscheduled suppression: henkaten-detector reads sprint scope from tasks.json / contract / sprints.json in priority order; fail-safe bypass with coverage warning (§6.7, v2.1 amendment A3)",
+        "tests/fixtures/dummy-project/ — minimal trine-eval fixture project with two trivial features, two sprints, stub source (§15.5)",
+        "End-to-end S4 acceptance test against dummy-project fixture (§15.5 assertions 1–6)"
+      ],
+      "estimated_complexity": "high",
+      "dependencies": [5]
+    },
+    {
+      "number": 7,
+      "title": "S5 — Nemawashi Walkthrough + Course Corrections",
+      "features": [
+        "skills/council-review/SKILL.md — manual fan-out with same andon/verification protocols as autorun; --restore-autonomy flag as the single canonical floor-reset path (§8.3, v2.1 amendment A5)",
+        "Full nemawashi walkthrough in council-autorun Step 1D (§8.2 Step 1D Stages 1–4):",
+        "  Stage 1: write position paper to .council/proposed/DEC-{NNNN}.md using templates/nemawashi-position-paper.md",
+        "  Stage 2: sequential agent-by-agent presentation with three handles (yes / refine / disagree)",
+        "  Stage 3: alignment — revise position paper with -rev{N} suffix if disagreements; repeat Stage 2",
+        "  Stage 4: ratify prompt — formal confirmation after all perspectives aligned",
+        "  Post-ratify: move position paper to proposed/archive/ with audit-log entry (v2.1 amendment A4)",
+        "templates/nemawashi-position-paper.md — full template with four-stage structure (used by autorun Step 1D and council-review)",
+        ".council/proposed/archive/ directory handling — move-on-ratify and decision-log path resolution (§5.4, v2.1 amendment A4)",
+        "Irreversible-action auto-escalation to nemawashi regardless of nominal minor classification (§2.4.2, R9)",
+        "Single-prompt minor approval path preserved — no position paper created, nemawashi_walkthrough_version: null in decision-log (§8.2 Step 1D, Q15)"
+      ],
+      "estimated_complexity": "medium",
+      "dependencies": [6]
+    },
+    {
+      "number": 8,
+      "title": "S6 — Three Retrospective Cadences + Yokoten + Detect Skill",
+      "features": [
+        "skills/council-retro-mini/SKILL.md — per-sprint automatic (≤30s); retrospective agent in mini mode; output to .council/retrospectives/sprint-{NN}-mini.md; no user input; no standard-work proposals (§8.4)",
+        "skills/council-retro/SKILL.md — per-cycle PDCA; retrospective agent in pdca mode + architect; synthesizes .council/retrospectives/full-{date}.md with Plan/Do/Check/Act sections; standard-work proposals via nemawashi for Level 5 approval; reads .harness/summary.md and regression.json (§8.5)",
+        "skills/council-jishuken/SKILL.md — per-period user-invoked reflection; retrospective agent in jishuken mode + architect; output to .council/jishuken/<topic>-<date>.md; NO --reset-autonomy-floor flag (reflection-only; v2.1 amendment A5); decoupled from standard-work proposals per Q16 (§8.6)",
+        "skills/council-detect/SKILL.md — on-demand henkaten detection; sensitivity thresholds; change_origin classification; writes to henka-register.jsonl (§8.7)",
+        "agents/retrospective.md — full implementation of pdca mode and jishuken mode (mini mode shipped in S2; this sprint completes all three modes) (§7.5)",
+        "Yokoten propagation: retrospective agent populates yokoten block (applicable_to_subsequent_sprints, adaptation_notes) when closing Henkaten records; council-autorun Step 1A.5 reads and surfaces these (§7.5, §8.2 Step 1A.5, R6)",
+        "templates/retrospective-mini.md — per-sprint capture shape (§4)",
+        "templates/retrospective-pdca.md — Plan/Do/Check/Act sections explicit (§4)",
+        "templates/jishuken-workshop.md — Reflection Notes / Open Questions / Hypotheses structure (§4)",
+        "End-to-end S6 acceptance test extending S4 fixture: retro-mini file, PDCA file with all four sections, jishuken file with standard-work.json unchanged (§15.5)"
+      ],
+      "estimated_complexity": "medium",
+      "dependencies": [7]
+    }
+  ]
+}

@@ -1,9 +1,9 @@
 # henka-council — Phase 0 Proposal Supplement
 ## Henkaten Management as Design Backbone
 
-**Status:** Draft for review
+**Status:** **APPROVED 2026-05-07** — all ten redesigns (R1–R10) accepted; Q13–Q20 resolved with the supplement's recommended defaults. Folded into [`docs/phase-0-proposal-v2.md`](./phase-0-proposal-v2.md). This document is preserved as historical lineage; v2 is the authoritative kickoff input.
 **Date:** 2026-05-07
-**Companion to:** [`docs/phase-0-proposal.md`](./phase-0-proposal.md) (v1)
+**Companion to:** [`docs/phase-0-proposal.md`](./phase-0-proposal.md) (v1) — superseded by [v2](./phase-0-proposal-v2.md)
 **Triggered by:** User request for deeper research into Henkaten management as the "backbone" of the project, with explicit authorization to redesign rather than transcribe the original VSCode implementation.
 
 ---

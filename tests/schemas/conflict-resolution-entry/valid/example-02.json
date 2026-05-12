@@ -1,0 +1,11 @@
+{
+  "conflict_id": "CONF-0042",
+  "timestamp": "2026-05-03T14:30:00Z",
+  "conflict_type": "evidence-contradiction",
+  "resolution_status": "escalated",
+  "sprint_context": 3,
+  "agents_in_conflict": ["archaeologist", "sentinel"],
+  "description": "Archaeologist and Sentinel disagreed on whether the model change in sprint 3 constituted a henkaten event. Archaeologist classified as passive henkaten; Sentinel flagged no-event.",
+  "resolution_method": "orchestrator-ruling",
+  "resolution_description": "Orchestrator reviewed evidence and sided with Archaeologist interpretation. Event logged as passive henkaten."
+}

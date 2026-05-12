@@ -1,0 +1,48 @@
+{
+  "permissions": {
+    "allow": [
+      "git status",
+      "git status --short",
+      "git diff",
+      "git diff --stat",
+      "git diff --cached",
+      "git log",
+      "git log --oneline",
+      "git log --graph",
+      "git show",
+      "git show *",
+      "git branch",
+      "git branch -l",
+      "git branch --list",
+      "git ls-files",
+      "git ls-files *",
+      "git rev-parse *",
+      "git cat-file *"
+    ],
+    "ask": [
+      "git add *",
+      "git commit *",
+      "git commit -m *",
+      "git checkout -b *",
+      "git switch -c *",
+      "git tag *",
+      "git stash",
+      "git stash *",
+      "git restore *",
+      "git cherry-pick *"
+    ],
+    "deny": [
+      "git push *",
+      "git push --force *",
+      "git push --force-with-lease *",
+      "git reset --hard *",
+      "git rebase -i *",
+      "git rebase *",
+      "git merge *",
+      "git filter-branch *",
+      "git bisect reset",
+      "rm -rf *",
+      "rm -fr *"
+    ]
+  }
+}
