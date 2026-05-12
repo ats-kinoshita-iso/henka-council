@@ -76,7 +76,14 @@ Collect the following before writing any configuration:
 
 - **Project name**: read from `package.json`, `pyproject.toml`, or ask the user.
 - **Project type**: infer from file structure (e.g. `package.json` → `javascript`,
-  `pyproject.toml` → `python`, `go.mod` → `go`). Default: `unknown`.
+  `pyproject.toml` → `python`, `go.mod` → `go`, `Cargo.toml` → `rust`). Default:
+  `unknown`. **Note:** `.council/config.json`'s `project_type` is the language/
+  toolchain context for council reporting (e.g. `python`). This is distinct from
+  `.harness/config.json`'s `project_type`, which is the trine-eval *rubric* type
+  (e.g. `cli-tool`, `web-app`, `api-service`). It is normal and expected for
+  these two values to differ — `cli-tool` describes how trine-eval grades the
+  project, `python` describes its toolchain. The kickoff skill must not overwrite
+  the harness-side value.
 - **Council agents to activate**: default to the four core agents
   (`orchestrator`, `architect`, `scope-guardian`, `henkaten-detector`).
   Ask if the user wants to enable optional agents (`qa-regression`, `rag-source`).
@@ -89,11 +96,88 @@ Verify that the required hooks are registered in Claude Code's hook system:
   Windows) must be registered as a `PreToolUse` hook.
 - `hooks/enforce-reversibility.sh` (or `hooks/win/enforce-reversibility.ps1`)
   must also be registered as a `PreToolUse` hook.
+- `hooks/log-tool-call.sh` (or `hooks/win/log-tool-call.ps1`) must be registered
+  as a `PostToolUse` hook.
+- `hooks/session-stopped-marker.sh` (or `hooks/win/session-stopped-marker.ps1`)
+  must be registered as a `Stop` hook.
 
-If any hook is missing, report: "Hook `<name>` is not registered. The council
-cannot enforce append-only log protection without it." Provide the exact
-registration command and pause until the user confirms the hooks are installed.
-Do not proceed past the hook self-check if any required hook is absent.
+Read the target project's `.claude/settings.local.json` (creating an empty
+`{ "permissions": {}, "hooks": {} }` object if absent) and check for a `hooks`
+key with entries pointing at the four hook scripts above.
+
+##### 1d.1 — Registration snippet (Linux/macOS)
+
+If `hooks` is absent or any of the four hooks is missing, surface the following
+copyable JSON to the user as the **exact registration command** (this is what
+goes into `.claude/settings.local.json`). Paths use `${CLAUDE_PLUGIN_ROOT}`,
+which Claude Code resolves to the plugin's installed directory at hook-fire
+time. If the runtime does not resolve that variable, the user should substitute
+the absolute path to the plugin install (e.g.
+`/home/<user>/.claude/plugins/cache/henkaten-council/<version>/`).
+
+```json
+{
+  "permissions": { "allow": [], "ask": [], "deny": [] },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/enforce-append-only.sh" }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/enforce-reversibility.sh" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/log-tool-call.sh" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-stopped-marker.sh" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+##### 1d.2 — Registration snippet (Windows / PowerShell)
+
+On Windows targets, replace each `bash ${CLAUDE_PLUGIN_ROOT}/hooks/<name>.sh`
+command with `pwsh -NoLogo -NoProfile -File ${CLAUDE_PLUGIN_ROOT}/hooks/win/<name>.ps1`.
+The PowerShell hooks ship functional parity with the bash siblings per v2.1
+amendment A7 — same envelope parsing, same allow/block exit codes, same audit
+log entry format. The four PS1 paths are:
+
+- `hooks/win/enforce-append-only.ps1` (PreToolUse matcher: `Write|Edit`)
+- `hooks/win/enforce-reversibility.ps1` (PreToolUse matcher: `Bash`)
+- `hooks/win/log-tool-call.ps1` (PostToolUse matcher: `*`)
+- `hooks/win/session-stopped-marker.ps1` (Stop hook)
+
+##### 1d.3 — What to do if hooks are missing
+
+If any of the four hooks is absent from `.claude/settings.local.json`, do NOT
+proceed past Step 1d. Report to the user:
+
+> "Hook `<name>` is not registered. The council cannot enforce append-only
+> log protection without it. Paste the snippet above into your
+> `.claude/settings.local.json` `hooks` block, then re-invoke
+> `/henkaten-council:council-kickoff`."
+
+The council-kickoff skill must **never modify `.claude/settings.local.json`
+automatically.** Hook registration is a user-driven action; the skill surfaces
+the snippet but does not write it.
 
 ---
 
@@ -292,9 +376,23 @@ sprint loop iteration.
 
 ### Step 8 — Write Governance Signal to `.harness/config.json`
 
-Write (or merge) the governance block into `.harness/config.json`. If the file
-does not exist, create it. If it exists, merge the `governance` key without
-overwriting unrelated keys:
+Write (or merge) the governance block into `.harness/config.json`. **Use
+`scripts/inject-governance.py`** rather than hand-editing the file — manual
+JSON merge is error-prone and can corrupt unrelated harness keys (mode,
+project_type, components_enabled, etc.). The helper script preserves every
+key the harness owns and only updates `governance`.
+
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/scripts/inject-governance.py --file .harness/config.json
+```
+
+The script is idempotent: a second invocation when the governance block already
+matches exits 0 with `OK: governance block already correct`. If the user has
+previously set `governance.enabled: false` (opt-out), the script preserves that
+setting and exits 2 with a warning — the council-kickoff skill should treat
+this as a user-driven veto and not override it.
+
+The block written has the following shape:
 
 ```json
 {

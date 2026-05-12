@@ -73,17 +73,59 @@ the reversibility policy. The hooks live in `hooks/` (Bash, for Linux/macOS)
 and `hooks/win/` (PowerShell, for Windows).
 
 When you run `/henkaten-council:council-kickoff` for the first time, the skill
-performs a **hook installation self-check**:
+performs a **hook installation self-check** and refuses to proceed past Step 1d
+if any of the four required hooks are missing.
 
-- It verifies that `hooks/enforce-append-only.sh` (or its PowerShell equivalent)
-  is registered in Claude Code's `PreToolUse` hook configuration.
-- It verifies that `hooks/enforce-reversibility.sh` is also registered.
-- If any hook is missing, the kickoff skill reports the gap and provides the
-  exact registration command to run before proceeding.
+The full registration snippet is in
+[`skills/council-kickoff/SKILL.md`](skills/council-kickoff/SKILL.md) under
+Step 1d.1 (Linux/macOS) and Step 1d.2 (Windows). The short version:
+
+Add this `hooks` block to your target project's `.claude/settings.local.json`:
+
+```json
+"hooks": {
+  "PreToolUse": [
+    { "matcher": "Write|Edit",
+      "hooks": [{ "type": "command",
+                  "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/enforce-append-only.sh" }] },
+    { "matcher": "Bash",
+      "hooks": [{ "type": "command",
+                  "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/enforce-reversibility.sh" }] }
+  ],
+  "PostToolUse": [
+    { "matcher": "*",
+      "hooks": [{ "type": "command",
+                  "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/log-tool-call.sh" }] }
+  ],
+  "Stop": [
+    { "hooks": [{ "type": "command",
+                  "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-stopped-marker.sh" }] }
+  ]
+}
+```
+
+On Windows targets, substitute `pwsh -NoLogo -NoProfile -File ${CLAUDE_PLUGIN_ROOT}/hooks/win/<name>.ps1`
+for each `bash ${CLAUDE_PLUGIN_ROOT}/hooks/<name>.sh`. The PowerShell hooks
+ship functional parity with the bash siblings (v2.1 amendment A7).
+
+`${CLAUDE_PLUGIN_ROOT}` is resolved by Claude Code at hook-fire time to the
+plugin's installed directory. If your Claude Code build does not resolve that
+variable yet, substitute the absolute path to where the plugin is installed
+(e.g. `/home/<user>/.claude/plugins/cache/henkaten-council/<version>/`).
 
 Do not skip the hook self-check. Running the council without the append-only
 hook means JSONL logs can be silently overwritten, which breaks the governance
 audit chain.
+
+### Permissions for running council-kickoff against a target project
+
+The kickoff skill writes into the target project's `.council/` directory and
+may merge a `governance` block into the target's `.harness/config.json`.
+Depending on your Claude Code permission tier, you may need to add Bash
+permissions for the target project's path (e.g.
+`Bash(mkdir -p /path/to/target/.council/**)`) before the orchestrator can
+create the baseline. The council-kickoff skill will surface this requirement
+if it hits a denial.
 
 ---
 
