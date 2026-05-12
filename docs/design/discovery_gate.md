@@ -1,7 +1,7 @@
 # Discovery Gate — Design Proposal
 
-**Status:** Draft for review
-**Date:** 2026-05-08
+**Status:** Ratified — 2026-05-12 (all §11 recommendations adopted)
+**Date:** 2026-05-08 (drafted); 2026-05-12 (§11 ratified)
 **Author:** Discovery-gate design pass against the Sprint 1+2 baseline of `claude/vibrant-chandrasekhar-cfc3f8`
 **Scope:** Defines an upstream gated phase — Spec Construction, Constraint Extraction, Acceptance-Criteria Definition — that runs *before* architecting and implementation begin on any new initiative. Output is a design document only; no production paths are touched.
 
@@ -278,19 +278,51 @@ S7: ship gate agents, schemas, and skill (forward use only). S8: retroactive run
 
 ---
 
-## 11. Open Questions
+## 11. Open Questions — Ratified Decisions (2026-05-12)
 
-Each needs a human decision before implementation. Recommendations given are overridable.
+All nine recommendations adopted on 2026-05-12. Decisions were processed in priority order: high-stakes character-shaping first (#3, #5, #9), then mechanical structure (#1, #2, #6, #7), then philosophical defaults (#4, #8). The numbered ordering below is preserved for stable cross-reference; the rationale block on each captures why the recommendation won.
 
-1. **Composition cap.** 5-worker waved vs. 4-worker (architect merged into spec-specialist). *Rec:* 5 in two waves — preserves bounded-fan-out, keeps roles clean. *Trade-off:* extra latency.
-2. **Schema extension vs. new schema.** Extend `decision-log-entry` enum vs. new `gate-decision-entry`. *Rec:* extend — uniform audit trail. *Trade-off:* consumers must handle new enum values.
-3. **Re-entry severity classifier.** Heuristic rule table vs. LLM-judged. *Rec:* heuristic for v0.1 (mirrors reversibility classifier). *Trade-off:* edge-case mis-classification; LLM is harder to verify deterministically.
-4. **Emergency-bypass authority.** Any user vs. designated authorised user. *Rec:* any user, with logging — visibility regardless. *Trade-off:* relies on retrospective discovery.
-5. **Sub-project granularity.** One gate per project, or per coherent deliverable? *Rec:* per coherent deliverable (independently reviewable spec/constraints/criteria). Needs user framing.
-6. **ID series.** `GATE-{NNNN}` vs. mirroring `DEC-{NNNN}`. *Rec:* `GATE-{NNNN}` — mnemonic, no confusion with decisions.
-7. **trine-eval coupling.** Does trine-eval need to know about the gate? *Rec:* invisible — gate writes `gate_id` into the existing `governance` block ([.harness/config.json](.harness/config.json)); trine-eval reads it like any governance signal. Aligns with [docs/phase-0-proposal.md §14 Q3](docs/phase-0-proposal.md).
-8. **PASS-WITH-NOTES ratification.** Auto-pass with watchlist, or require user ratification? *Rec:* require ratification — the watchlist is a non-trivial commitment. *Trade-off:* friction on borderline-but-ready packages.
-9. **Producer-agent coverage for Activities 2 and 3.** A Spec Exploration producer (§1, §3) covers Activity 1. Activities 2 (Constraint Extraction) and 3 (Acceptance Criteria) have no defined producer. Options: (a) sibling Constraint Exploration and Criteria Exploration agents; (b) expand Spec Exploration into a Discovery Exploration Agent covering all three; (c) leave Activities 2 and 3 as human-only and let the gate's `constraint-extractor` and `criteria-architect` reviewers carry the load. *Rec:* (b) — single agent, single artifact stream, consistent authorship attribution. *Trade-off:* longer interview; risks blurring the three activities rather than producing three structured outputs.
+### High-stakes (character-shaping)
+
+3. **Re-entry severity classifier.** Heuristic rule table vs. LLM-judged.
+   - **Decided:** Heuristic for v0.1.
+   - **Rationale:** Mirrors the reversibility classifier (R9) — both gates need to be deterministic, unit-testable, and inspectable in the audit log. The heuristic ("structural = scope change OR constraint added OR criterion reweighted >10%") composes from `git diff` deterministically; LLM judgment does not. Edge-case mis-classification is mitigated by the henkaten-detector running ambient, which can flag false-negatives at sprint review. Open implementation note: the heuristic should include a "natural-language directive verb changed" check (e.g. `must` → `should`) to catch load-bearing one-word edits that *look* editorial.
+
+5. **Sub-project granularity.** One gate per project vs. per coherent deliverable.
+   - **Decided:** Per coherent deliverable.
+   - **Rationale:** "Project" is too coarse for projects that ship multiple independent capabilities; a single spec/constraints/criteria triple would mash together unrelated concerns. Per-deliverable lets each gate review a coherent artifact. Implementation requirement: define the scope of `GATE-0001` (the retroactive run on henka-council's own spec, per §10.2) before S7 contract drafting — that scoping exercise *is* the operational definition of "coherent deliverable" for this project.
+
+9. **Producer-agent coverage for Activities 2 and 3.**
+   - **Decided:** Option (b) — single Discovery Exploration Agent covering all three activities.
+   - **Rationale:** Single agent, single artifact stream, consistent authorship attribution; one interview producing all three artifacts coherently is better than three sessions risking divergence. Risk: collapsing the three framings into one. Mitigation: the gate's reviewer agents (`spec-specialist`, `constraint-extractor`, `criteria-architect`) maintain the steelman/adversary/adjudicator framings on the review side regardless of producer authorship. A v0.2 split into (a) sibling producers remains open if v0.1 shows blurring in practice. A v0.2-deferral alternative (option (c): no producer in v0.1) was considered and overridden in favor of shipping producer support alongside the reviewer roster.
+
+### Mechanical structure
+
+1. **Composition cap.** 5-worker waved vs. 4-worker (architect merged into spec-specialist).
+   - **Decided:** 5 in two waves — wave 1 = the four specialists, wave 2 = architect synthesizes.
+   - **Rationale:** Architect's role is synthesis across the other four; merging architect into spec-specialist contaminates the steelman/adversary tension the gate depends on. Waved dispatch preserves both the fan-out cap and the role split. Latency cost is acceptable for a gate that runs at project start and on re-entry, not per-sprint.
+
+2. **Schema extension vs. new schema.**
+   - **Decided:** Extend `decision-log-entry.schema.json` enum with `gate-pass`, `gate-pass-with-notes`, `gate-reject`, `gate-escalate`.
+   - **Rationale:** Uniform audit trail; every consumer of `decision-log.jsonl` (retrospective agent, council-review, hooks) keeps working without case-splitting on schema. Yokoten propagation already keys off decision-log entries — a parallel schema would force every yokoten reader to union two streams. Maintenance cost: retrospective agent and council-review must learn the new enum values.
+
+6. **ID series.**
+   - **Decided:** `GATE-{NNNN}`.
+   - **Rationale:** Mnemonic. A gate decision is a decision-log entry (per #2) but has distinct lifecycle properties (re-entry, versioning, watchlist); distinct ID prefix makes them greppable and natural to reference in position papers ("GATE-0003 re-entered at rev2"). Two ID series to track is a small cost.
+
+7. **trine-eval coupling.**
+   - **Decided:** Invisible. Gate writes `gate_id` into the existing `governance` block of `.harness/config.json`; trine-eval reads it as just another governance signal.
+   - **Rationale:** Aligns with the architectural separation established in [docs/phase-0-proposal.md §14 Q3](docs/phase-0-proposal.md) — sprint engine knows nothing about governance internals; governance writes signals it consumes. Making trine-eval gate-aware would couple the two and force a trine-eval release for every gate revision.
+
+### Philosophical defaults
+
+4. **Emergency-bypass authority.**
+   - **Decided:** Any user, with logging.
+   - **Rationale:** During a real incident, "find the gate-authorized person" is the wrong friction to add. Logging makes the bypass visible — abuse surfaces in retrospective via pull-rate analysis, not via prevention. Consistent with R2 (distributed andon authority, low social cost to halt). Dependency: `/council-retro` must run on a regular cadence for the retrospective-discovery mechanism to bite.
+
+8. **PASS-WITH-NOTES ratification.**
+   - **Decided:** Require explicit user ratification.
+   - **Rationale:** A watchlist is a commitment to track items into subsequent sprints. Auto-passing means the user might not notice they signed up for that tracking, and the watchlist *will* resurface at every pre-flight (§5 PASS-WITH-NOTES row) — without conscious ratification those resurfacings feel like noise rather than signal. Aligns with R5 (nemawashi: decisions are reached *with* the user, not handed to them). Friction cost on borderline-but-ready packages accepted.
 
 ---
 
