@@ -16,8 +16,11 @@ $AuditLog = Join-Path $TempDir 'audit-log.jsonl'
 $DecisionLog = Join-Path $TempDir 'decision-log.jsonl'
 $Threshold = 100
 
-# Create fake audit log above threshold
-python3 - $AuditLog $Threshold @'
+# Create fake audit log above threshold.
+# NOTE: must PIPE the here-string into `python -`, not pass it as a positional argument.
+# `python - args @'script'@` would put the script in argv[4] and python would read empty
+# stdin (silent no-op exit 0). The `@'...'@ | python - args` form pipes the script via stdin.
+@'
 import pathlib, sys, json
 audit_log = pathlib.Path(sys.argv[1])
 threshold = int(sys.argv[2])
@@ -27,7 +30,7 @@ while len(content.encode("utf-8")) <= threshold + 10:
                            "event_type": "tool-call", "agent_id": "test"}) + "\n"
 audit_log.write_text(content, encoding="utf-8")
 print(f"Created {audit_log} ({len(content)} bytes)")
-'@
+'@ | python - $AuditLog $Threshold
 
 if (-not (Test-Path $AuditLog)) {
     Fail "Failed to create test audit log"
@@ -36,7 +39,7 @@ if (-not (Test-Path $AuditLog)) {
 }
 
 # Run rotation
-python3 scripts/rotate-audit-log.py --file $AuditLog --threshold-bytes $Threshold --decision-output $DecisionLog
+python scripts/rotate-audit-log.py --file $AuditLog --threshold-bytes $Threshold --decision-output $DecisionLog
 $rotateExit = $LASTEXITCODE
 
 if ($rotateExit -eq 0) { Pass "rotate-audit-log.py exited 0" }
@@ -73,9 +76,9 @@ if (Test-Path $DecisionLog) {
     Fail "Decision log was not created at $DecisionLog"
 }
 
-# Check SHA-256 matches
+# Check SHA-256 matches (pipe here-string into `python -` — see note above)
 if ($null -ne $ArchiveFile -and (Test-Path $ArchiveFile) -and (Test-Path $DecisionLog)) {
-    python3 - $ArchiveFile $DecisionLog @'
+    @'
 import hashlib, json, pathlib, sys
 archive_path = pathlib.Path(sys.argv[1])
 decision_log_path = pathlib.Path(sys.argv[2])
@@ -99,14 +102,14 @@ if recorded == expected:
 else:
     print(f"SHA-256 MISMATCH: expected={expected}, recorded={recorded}")
     sys.exit(1)
-'@
+'@ | python - $ArchiveFile $DecisionLog
     if ($LASTEXITCODE -eq 0) { Pass "SHA-256 in DEC entry matches archive file" }
     else { Fail "SHA-256 mismatch between DEC entry and archive file" }
 }
 
 # Idempotency: second run with empty file (below threshold) should exit 0 with no new archive
 $archiveCountBefore = (Get-ChildItem $TempDir -Filter 'audit-log.*.jsonl.gz' 2>$null).Count
-python3 scripts/rotate-audit-log.py --file $AuditLog --threshold-bytes $Threshold --decision-output $DecisionLog
+python scripts/rotate-audit-log.py --file $AuditLog --threshold-bytes $Threshold --decision-output $DecisionLog
 $idempotentExit = $LASTEXITCODE
 $archiveCountAfter = (Get-ChildItem $TempDir -Filter 'audit-log.*.jsonl.gz' 2>$null).Count
 

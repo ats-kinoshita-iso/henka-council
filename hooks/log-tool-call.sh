@@ -102,7 +102,9 @@ fi
 
 # Build JSON entry (all required fields: entry_id, timestamp, event_type, agent_id)
 if command -v jq &>/dev/null; then
-    json_entry=$(jq -n \
+    # -c emits compact (single-line) JSON so the appended audit-log line is a single jsonl record.
+    # Multi-line pretty-printed output would break consumers that read the file as one JSON object per line.
+    json_entry=$(jq -nc \
         --arg entry_id "$entry_id" \
         --arg timestamp "$timestamp" \
         --arg event_type "$event_type" \

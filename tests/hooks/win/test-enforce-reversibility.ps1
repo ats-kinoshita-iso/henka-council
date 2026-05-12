@@ -26,9 +26,12 @@ function Write-Autonomy([int]$level) {
 function Invoke-HookWithLevel([string]$envelopeJson, [int]$level) {
     Write-Autonomy $level
     $env:EFFECTIVE_AUTONOMY_PATH = $AutonomyFile
-    $code = ($envelopeJson | pwsh -NoLogo -NoProfile -File 'hooks/win/enforce-reversibility.ps1'; $LASTEXITCODE)
+    # Pipeline + $LASTEXITCODE must be two statements; PowerShell rejects
+    # `(pipeline; $LASTEXITCODE)` as a single grouping expression.
+    $envelopeJson | pwsh -NoLogo -NoProfile -File 'hooks/win/enforce-reversibility.ps1'
+    $code = $LASTEXITCODE
     $env:EFFECTIVE_AUTONOMY_PATH = $null
-    return $LASTEXITCODE
+    return $code
 }
 
 # --- BLOCK cases ---

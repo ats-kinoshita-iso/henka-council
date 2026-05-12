@@ -28,8 +28,10 @@ else { Fail "Hook exited $hookExit (expected 0)" }
 if (Test-Path $AuditLog) { Pass "Audit log file exists" }
 else { Fail "Audit log file was not created at $AuditLog" }
 
-# Validate with Python
-$pyResult = python3 - $AuditLog 'schemas/audit-log-entry.schema.json' @'
+# Validate with Python — must PIPE the here-string into `python -`, not pass it as
+# a positional argument. `python - args @'script'@` would put the script in argv[4]
+# and python would read empty stdin and exit 0 silently. Pipe form binds stdin correctly.
+$pyResult = @'
 import json, pathlib, sys
 
 audit_log = pathlib.Path(sys.argv[1])
@@ -69,7 +71,7 @@ except Exception as e:
     sys.exit(1)
 
 print("AUDIT ENTRY VALID")
-'@
+'@ | python - $AuditLog 'schemas/audit-log-entry.schema.json'
 
 if ($LASTEXITCODE -eq 0) { Pass "Audit log entry is valid" }
 else { Fail "Audit log entry validation failed" }

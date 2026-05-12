@@ -49,9 +49,12 @@ if ($code -eq 0) { Pass "Read tool is allowed" }
 else { Fail "Read tool should be allowed (exit was $code)" }
 
 # Empty envelope — fail open
-$code = ('' | pwsh -NoLogo -NoProfile -File 'hooks/win/enforce-append-only.ps1'; $LASTEXITCODE)
-if ($LASTEXITCODE -eq 0) { Pass "Empty envelope fails open (exit 0)" }
-else { Fail "Empty envelope should fail open" }
+# (Pipeline + $LASTEXITCODE must be two statements; PowerShell rejects
+#  `(pipeline; $LASTEXITCODE)` as a single grouping expression.)
+'' | pwsh -NoLogo -NoProfile -File 'hooks/win/enforce-append-only.ps1'
+$code = $LASTEXITCODE
+if ($code -eq 0) { Pass "Empty envelope fails open (exit 0)" }
+else { Fail "Empty envelope should fail open (exit was $code)" }
 
 # --- Results ---
 Write-Host ""
