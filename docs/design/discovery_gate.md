@@ -13,7 +13,7 @@ The henka-council currently engages *during* sprint execution. `/council-kickoff
 
 That is a missing station on the line. Jidoka (自働化) means the line stops on abnormality at every station — yet if the spec, constraints, or criteria are themselves defective, the defect propagates into architecture and implementation before any agent has authority to halt. The first agent that *could* halt is several stations downstream of where the defect originated.
 
-This document proposes a **Discovery Gate**: an upstream station that classifies the *planning package* (spec + constraint catalog + acceptance criteria) as fit-to-pass, fit-with-notes, requires-revision, or human-escalate. The council enters at the *end* of the three discovery activities — not during them — to assess whether the package is ready to advance. The activities remain primarily human work; the gate is the council's check before downstream stations begin.
+This document proposes a **Discovery Gate**: an upstream station that classifies the *planning package* (spec + constraint catalog + acceptance criteria) as fit-to-pass, fit-with-notes, requires-revision, or human-escalate. The council enters at the *end* of the three discovery activities — not during them — to assess whether the package is ready to advance. The activities are operator-led: humans drive them, optionally assisted by upstream **producer agents** (e.g. a Spec Exploration interview agent) whose role is to help the human author the artifacts. Producer agents are out of scope for this document; the gate reviews the package they hand off, regardless of which mix of human and agent authorship produced it.
 
 The gate makes three things explicit that are currently implicit: what the council knows about the work before it begins; what re-review is owed when planning changes mid-flight ([instructions/human-approval.md:36-40](instructions/human-approval.md) currently flags such edits as Henkaten but has no path to re-validate the package); and what "passing" looks like at the package level (the seven pillars apply to package-level review naturally — spec is genbutsu, constraints are poka-yoke, criteria are jidoka stop-conditions in operational form). It is a natural extension of the existing pattern, not a parallel system.
 
@@ -26,6 +26,8 @@ The gate makes three things explicit that are currently implicit: what the counc
 Reusing the four default agents as-is is rejected: their evidence priorities are tuned for sprint-cycle review (coherence drift, feature-integrity, change classification), and forcing spec-package framings onto them weakens both the gate and the existing per-sprint review. Composing a parallel council is rejected: the pattern (Level 4 orchestrator + Level 1–2 workers + dispatch envelope + andon + nemawashi) is reusable, and duplicating it produces protocol drift. The specialised-variant choice keeps the same orchestrator and the same andon and evidence rules ([agents/orchestrator.md:64-95](agents/orchestrator.md), [instructions/andon-protocol.md](instructions/andon-protocol.md), [instructions/evidence-first.md](instructions/evidence-first.md)) and changes only the worker roster and the artifact under review.
 
 ### Proposed roster
+
+The gate council is composed of **reviewers**, distinct from the **producer agents** that may have helped author the package upstream (§1). A producer agent (e.g. Spec Exploration) writes drafts with the human; a reviewer reads the resulting package and judges fitness. The same human or a different one may be in the loop for both, but the obligations differ — producers operate under interview discipline (one question at a time, surface assumptions, defer where possible), reviewers operate under the council's standing obligations (andon authority, genchi-genbutsu verification, nemawashi for synthesis). No agent occupies both roles in a single gate run; that would collapse the steelman/adversary tension the gate depends on.
 
 The gate council assembles:
 
@@ -79,19 +81,19 @@ The PASS-WITH-NOTES state exists because reality sits between PASS and REJECT mo
 
 ## 6. Henkaten Coupling and Re-Entry Policy
 
-This is the load-bearing section. Once the gate passes and architecting begins, *any* change to spec, constraints, or criteria is itself a change point that should re-enter the gate. The re-entry policy must be concrete enough to implement; what follows is intended to read as a directly-implementable rule.
+Once the gate passes and architecting begins, *any* change to spec, constraints, or criteria is a change point that should re-enter the gate. The policy below is intended to read as a directly-implementable rule.
 
 ### 6.1 Trigger detection
 
-A re-entry trigger fires when **any of the three gate artifacts** changes after gate-pass. Detection runs at three points:
+A re-entry trigger fires when any of the three gate artifacts changes after gate-pass. Three detection points:
 
-1. **Pre-sprint check** ([.harness/spec.md §3.2 Step 1A](.harness/spec.md), already implemented). The henkaten-detector reads `git log` since the last sprint and classifies any commit touching the gate artifacts as a `gate-artifact-change` Henkaten. New 4M sub-type (per [supplement R8](docs/phase-0-proposal-supplement.md)): **Material → `spec-document-change`**, **Material → `constraint-catalog-change`**, **Method → `acceptance-criterion-change`**.
-2. **PostToolUse hook** ([.harness/spec.md §4.4](.harness/spec.md)). The `log-tool-call` hook already records writes; extend the `enforce-append-only` PreToolUse hook to *also* fire on writes to the three gate artifact paths and emit a `gate-artifact-change` audit entry. This is mechanism, not discipline ([supplement Q13](docs/phase-0-proposal-supplement.md)).
-3. **Manual `/council-detect`** invocation ([.harness/spec.md §3.1](.harness/spec.md)). The detect skill scans for diffs against the last archived gate package and reports.
+1. **Pre-sprint check** ([.harness/spec.md §3.2 Step 1A](.harness/spec.md)). Henkaten-detector reads `git log` since last sprint; commits touching gate artifacts fire as `gate-artifact-change` Henkaten. New 4M sub-types ([supplement R8](docs/phase-0-proposal-supplement.md)): **Material → `spec-document-change`**, **Material → `constraint-catalog-change`**, **Method → `acceptance-criterion-change`**.
+2. **PreToolUse hook** ([.harness/spec.md §4.4](.harness/spec.md)). Extend `enforce-append-only` to also fire on writes to the three gate-artifact paths and emit a `gate-artifact-change` audit entry. Mechanism, not discipline ([supplement Q13](docs/phase-0-proposal-supplement.md)).
+3. **Manual `/council-detect`** ([.harness/spec.md §3.1](.harness/spec.md)). Scans for diffs against the last archived gate package.
 
 ### 6.2 Re-entry severity ladder
 
-Not every change demands a full gate re-run. The policy classifies severity by *which* artifact and *what kind* of change:
+Severity is classified by *which* artifact and *what kind* of change:
 
 | Severity | Trigger | Re-entry |
 |---|---|---|
@@ -115,7 +117,7 @@ Not every change demands a full gate re-run. The policy classifies severity by *
 
 ## 7. Hexagonal Integration: Ports and Adapters
 
-A `grep -i hexagonal` across the worktree returns matches only in [henka-council.txt:1394, 1410-1412](henka-council.txt) and [docs/phase-0-proposal.md:1153](docs/phase-0-proposal.md), describing *target-project* patterns the council governs — not the council's own structure. **The council is not formally hexagonal.** It is structured around clean port-shaped boundaries that map to ports/adapters terminology directly. This section places the gate within those boundaries; it does not retroactively claim the rest of the codebase as hexagonal.
+`grep -i hexagonal` matches only [henka-council.txt:1394, 1410-1412](henka-council.txt) and [docs/phase-0-proposal.md:1153](docs/phase-0-proposal.md), both describing *target-project* patterns the council governs — not the council's own structure. **The council is not formally hexagonal**, but it has clean port-shaped boundaries that map to ports/adapters terminology directly. This section places the gate within those boundaries without retroactively claiming the rest of the codebase as hexagonal.
 
 ### 7.1 The gate's domain core
 
@@ -130,20 +132,16 @@ These four are pure domain — no I/O, no Bash, no tool access.
 
 ### 7.2 Inbound ports (driving)
 
-The gate is invoked from outside via:
-
-- **`/council-gate` skill** — new file at `skills/council-gate/SKILL.md`. Procedural document analogous to `council-kickoff`; declares the activity sequence, idempotency, and pre-flight checks. Inbound primary port.
-- **Pre-sprint hook entry** — when henkaten-detector reports a `gate-artifact-change` Henkaten, the council-autorun skill conditionally re-invokes the gate via Task. Inbound secondary port.
-- **`/council-detect`** — already present; gains a `--gate-coverage` flag that re-runs the gate's coherence checks without producing a new position paper, for read-only audit.
+- **`/council-gate` skill** — new `skills/council-gate/SKILL.md`, procedural document analogous to `council-kickoff`. Primary port.
+- **Pre-sprint hook entry** — when henkaten-detector reports a `gate-artifact-change`, council-autorun conditionally re-invokes the gate via Task. Secondary port.
+- **`/council-detect --gate-coverage`** — re-runs the gate's coherence checks without producing a new position paper, for read-only audit.
 
 ### 7.3 Outbound ports (driven)
 
-The gate produces:
-
-- **Position-paper writer port** — abstract writer for `.council/proposed/GATE-{NNNN}.md`. The default adapter is filesystem `Write`. A future adapter could push to a wiki or issue tracker; the gate domain does not know.
-- **Decision-log appender port** — already exists as `scripts/append-decision.py` ([.harness/spec.md §4.4](.harness/spec.md)). The gate uses it via the existing append-only contract; this is the canonical example of a working port-adapter pair in the current codebase.
-- **Henkaten emitter port** — `scripts/append-henka.py`. Same shape.
-- **Verification runner port** — `scripts/run-verification.py` ([.harness/spec.md §4.5](.harness/spec.md)). The reviewers' `verification` strings flow through this port; the allowlist enforcement is the adapter's responsibility, not the domain's.
+- **Position-paper writer** — `.council/proposed/GATE-{NNNN}.md`; default adapter is filesystem `Write`; future adapters could target a wiki or tracker.
+- **Decision-log appender** — `scripts/append-decision.py` ([.harness/spec.md §4.4](.harness/spec.md)). Canonical existing port-adapter pair.
+- **Henkaten emitter** — `scripts/append-henka.py`. Same shape.
+- **Verification runner** — `scripts/run-verification.py` ([.harness/spec.md §4.5](.harness/spec.md)). Allowlist enforcement is the adapter's responsibility, not the domain's.
 
 ### 7.4 Where the gate lives in the file tree
 
@@ -235,9 +233,9 @@ The gate prevents some failure modes. It introduces others. Both classes need An
 
 ### 9.1 Failure modes the gate prevents
 
-- **Defective spec propagated to architecture.** Ambiguous human intent resolved inconsistently downstream. Gate catch: `spec-specialist` rejects on coherence ≤ 2.
-- **Hidden constraint surfaced post-architecture** — the "legal told me last week" failure. Gate catch: `constraint-extractor` enumerates before architecture begins.
-- **Unmeasurable acceptance** — "make it good." Gate catch: `criteria-architect` rejects criteria without `measurement_or_observation`.
+- **Defective spec propagated to architecture** — `spec-specialist` rejects on coherence ≤ 2.
+- **Hidden constraint surfaced post-architecture** — `constraint-extractor` enumerates before architecture begins.
+- **Unmeasurable acceptance** — `criteria-architect` rejects criteria without `measurement_or_observation`.
 
 ### 9.2 Failure modes the gate introduces
 
@@ -266,17 +264,17 @@ After Sprints S1–S6 ship v0.1 ([.harness/sprints.json](.harness/sprints.json))
 
 ### 10.2 Retroactive application
 
-henka-council itself is mid-flight (D1–D2 shipped, S1–S6 pending). Retroactive application means treating existing `.harness/spec.md`, its embedded constraints (Section 4), and per-sprint Success Criteria (`.harness/spec.md §5`) as a candidate gate package and running the gate against them once. Three outcomes:
+henka-council itself is mid-flight (D1–D2 shipped, S1–S6 pending). Retroactive application treats existing `.harness/spec.md`, its embedded constraints (§4), and per-sprint Success Criteria (`.harness/spec.md §5`) as a candidate gate package. Three outcomes:
 
-1. **PASS** — gate-id `GATE-0001` assigned retrospectively; downstream sprints re-tagged with `linked_gate_id: GATE-0001`.
+1. **PASS** — `GATE-0001` assigned retrospectively; downstream sprints re-tagged with `linked_gate_id`.
 2. **PASS WITH NOTES** — same, plus the watchlist becomes input to the S6 retrospective.
-3. **REJECT** — recommended response: continue current sprints to completion under their existing contracts, but treat the rejection as a Henkaten driving the v0.2 plan revision. Do not halt mid-sprint on a retroactive failure; incomplete deliverables are a worse failure than continuing with a flawed spec.
+3. **REJECT** — continue current sprints to completion under their existing contracts; treat the rejection as a Henkaten driving v0.2 plan revision. Do not halt mid-sprint on a retroactive failure; incomplete deliverables are a worse failure than continuing with a flawed spec.
 
-Retroactive runs do not block the current pipeline — retrofitting the upstream station while downstream stations are running cannot itself disrupt them.
+Retroactive runs do not block the current pipeline — retrofitting the upstream station cannot itself disrupt downstream stations already running.
 
 ### 10.3 Sequencing
 
-S7: ship agent files, schemas, and skill (no retroactive run; forward use only). S8: run the gate retroactively on henka-council's own spec; use the experience to refine the gate. v0.2: mandate gate before kickoff for new consumer projects; existing projects opt in.
+S7: ship gate agents, schemas, and skill (forward use only). S8: retroactive run on henka-council's own spec. v0.2: mandate gate before kickoff for new consumer projects; existing projects opt in.
 
 ---
 
@@ -288,10 +286,11 @@ Each needs a human decision before implementation. Recommendations given are ove
 2. **Schema extension vs. new schema.** Extend `decision-log-entry` enum vs. new `gate-decision-entry`. *Rec:* extend — uniform audit trail. *Trade-off:* consumers must handle new enum values.
 3. **Re-entry severity classifier.** Heuristic rule table vs. LLM-judged. *Rec:* heuristic for v0.1 (mirrors reversibility classifier). *Trade-off:* edge-case mis-classification; LLM is harder to verify deterministically.
 4. **Emergency-bypass authority.** Any user vs. designated authorised user. *Rec:* any user, with logging — visibility regardless. *Trade-off:* relies on retrospective discovery.
-5. **Sub-project granularity.** One gate per project, or per coherent deliverable? *Rec:* per coherent deliverable, where "coherent" means spec/constraints/criteria can be reviewed independently. Could not determine from existing code; needs user framing.
-6. **ID series.** `GATE-{NNNN}` vs. mirroring `DEC-{NNNN}`. *Rec:* `GATE-{NNNN}` — mnemonic, no confusion. *Trade-off:* another series to keep monotonic.
+5. **Sub-project granularity.** One gate per project, or per coherent deliverable? *Rec:* per coherent deliverable (independently reviewable spec/constraints/criteria). Needs user framing.
+6. **ID series.** `GATE-{NNNN}` vs. mirroring `DEC-{NNNN}`. *Rec:* `GATE-{NNNN}` — mnemonic, no confusion with decisions.
 7. **trine-eval coupling.** Does trine-eval need to know about the gate? *Rec:* invisible — gate writes `gate_id` into the existing `governance` block ([.harness/config.json](.harness/config.json)); trine-eval reads it like any governance signal. Aligns with [docs/phase-0-proposal.md §14 Q3](docs/phase-0-proposal.md).
 8. **PASS-WITH-NOTES ratification.** Auto-pass with watchlist, or require user ratification? *Rec:* require ratification — the watchlist is a non-trivial commitment. *Trade-off:* friction on borderline-but-ready packages.
+9. **Producer-agent coverage for Activities 2 and 3.** A Spec Exploration producer (§1, §3) covers Activity 1. Activities 2 (Constraint Extraction) and 3 (Acceptance Criteria) have no defined producer. Options: (a) sibling Constraint Exploration and Criteria Exploration agents; (b) expand Spec Exploration into a Discovery Exploration Agent covering all three; (c) leave Activities 2 and 3 as human-only and let the gate's `constraint-extractor` and `criteria-architect` reviewers carry the load. *Rec:* (b) — single agent, single artifact stream, consistent authorship attribution. *Trade-off:* longer interview; risks blurring the three activities rather than producing three structured outputs.
 
 ---
 
