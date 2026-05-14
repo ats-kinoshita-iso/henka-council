@@ -59,8 +59,36 @@
     },
     "response_type": {
       "type": "string",
-      "enum": ["log-only", "auto-correct", "propose-to-user", "escalate", "andon-alert", "andon-stop"],
-      "description": "How this change-point should be handled."
+      "enum": [
+        "log-only",
+        "auto-correct",
+        "propose-to-user",
+        "escalate",
+        "andon-alert",
+        "andon-stop",
+        "no-progress",
+        "resource-cap"
+      ],
+      "description": "How this change-point should be handled. `no-progress` and `resource-cap` are loop-termination responses: `no-progress` is the agent's own metacognitive judgment that it cannot advance on the declared objective (requires non-empty `attempts`); `resource-cap` is a harness-imposed limit (takt-window expiry, iteration cap, context-window exhaustion) that fires regardless of agent judgment. These MUST NOT be conflated with `andon-stop` (safety-critical agent-detected anomaly) in audit data."
+    },
+    "attempts": {
+      "type": "array",
+      "description": "When `response_type` is `no-progress`, captures the distinct approaches the agent tried before judging that it was not advancing. Required to be non-empty for `no-progress`; optional and informational for other response types.",
+      "items": {
+        "type": "object",
+        "required": ["approach", "reason_did_not_advance"],
+        "properties": {
+          "approach": {
+            "type": "string",
+            "description": "Short description of the approach taken."
+          },
+          "reason_did_not_advance": {
+            "type": "string",
+            "description": "Why this approach did not advance the state."
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "evidence": {
       "type": "array",
@@ -192,5 +220,19 @@
       "description": "Brief summary of how the change-point was resolved."
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {"response_type": {"const": "no-progress"}},
+        "required": ["response_type"]
+      },
+      "then": {
+        "required": ["attempts"],
+        "properties": {
+          "attempts": {"minItems": 1}
+        }
+      }
+    }
+  ]
 }

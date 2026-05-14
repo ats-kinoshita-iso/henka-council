@@ -1,0 +1,21 @@
+{
+  "henka_id": "HK-0044",
+  "sprint_context": 7,
+  "fourM_axis": "Method",
+  "category": "no-progress-determination",
+  "change_origin": "active",
+  "impact_level": "actionable",
+  "description": "Agent reported no-progress but failed to include the required attempts[] array.",
+  "affected_artifacts": [],
+  "response_type": "no-progress",
+  "evidence": [
+    {
+      "claim": "Loop terminated as no-progress.",
+      "evidence_class": "observed",
+      "confidence": "high",
+      "verification": "git log -1 --oneline"
+    }
+  ],
+  "status": "classified",
+  "detected_at": "2026-05-13T22:10:00Z"
+}

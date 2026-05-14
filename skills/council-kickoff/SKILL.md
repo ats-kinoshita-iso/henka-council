@@ -288,7 +288,7 @@ If `.council/decision-log.jsonl` does not exist: create the file with a
 single seed entry representing the kickoff decision:
 
 ```json
-{"dec_id":"DEC-0001","timestamp":"<ISO-8601-now>","decision_type":"kickoff","decision_outcome":"council-baseline-created","council_agents_involved":["orchestrator"],"evidence_cited":[],"applied_automatically":true,"user_approval_required":false,"affected_files":[".council/config.json",".council/council-manifest.json"],"linked_henka_id":null,"sprint_context":"kickoff","autonomy_level_used":4,"effective_autonomy_at_decision":4,"reversibility":"reversible","nemawashi_walkthrough_version":null}
+{"decision_id":"DEC-0001","timestamp":"<ISO-8601-now>","decision_type":"kickoff","decision_outcome":"applied","council_agents_involved":["orchestrator"],"evidence_cited":[],"applied_automatically":true,"user_approval_required":false,"affected_files":[".council/config.json",".council/council-manifest.json"],"sprint_context":0,"autonomy_level_used":4,"effective_autonomy_at_decision":4,"reversibility":"reversible","nemawashi_walkthrough_version":null,"description":"Council baseline created (kickoff)."}
 ```
 
 #### `audit-log.jsonl`

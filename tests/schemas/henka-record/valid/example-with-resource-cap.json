@@ -1,0 +1,25 @@
+{
+  "henka_id": "HK-0043",
+  "sprint_context": 7,
+  "fourM_axis": "Machine",
+  "category": "resource-cap-firing",
+  "change_origin": "passive",
+  "impact_level": "blocking",
+  "description": "Nemawashi walkthrough Stage 3 iteration cap (2 cycles) was exhausted on DEC-0099 without alignment. Loop terminated by harness-imposed limit, not by agent judgment.",
+  "affected_artifacts": [
+    ".council/proposed/DEC-0099.md",
+    ".council/decision-log.jsonl"
+  ],
+  "response_type": "resource-cap",
+  "evidence": [
+    {
+      "claim": "Two revision cycles completed; alignment not reached on Stage 4 prerequisites.",
+      "evidence_class": "observed",
+      "confidence": "high",
+      "verification": "git log --oneline -10 -- .council/proposed/DEC-0099.md"
+    }
+  ],
+  "status": "responded",
+  "detected_at": "2026-05-13T22:05:00Z",
+  "detected_by_agent": "orchestrator"
+}

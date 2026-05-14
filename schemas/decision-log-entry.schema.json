@@ -40,8 +40,8 @@
     },
     "decision_outcome": {
       "type": "string",
-      "enum": ["applied", "proposed", "rejected", "deferred", "superseded"],
-      "description": "Final outcome of this decision."
+      "enum": ["applied", "proposed", "rejected", "deferred", "halted", "superseded"],
+      "description": "Final outcome of this decision. `halted` is used when a sprint or loop terminates without applying the decision — e.g., after an andon stop, a no-progress determination on the henka side, or a harness-imposed resource cap. `superseded` is used when a later decision replaces this one before it was applied."
     },
     "applied_automatically": {
       "type": "boolean",
