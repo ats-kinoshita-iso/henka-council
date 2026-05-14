@@ -1,0 +1,8 @@
+{
+  "sprint_number": 16,
+  "classified_at": "2026-05-13T23:10:00Z",
+  "cynefin": "complicated",
+  "confidence": 1.5,
+  "rationale": "Demo fixture: confidence above 1.0 is out of range.",
+  "expected_loop_shape": "plan-then-execute-loop"
+}

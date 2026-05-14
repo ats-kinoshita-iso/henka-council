@@ -1,0 +1,14 @@
+{
+  "sprint_number": 14,
+  "classified_at": "2026-05-13T23:00:00Z",
+  "classified_by_agent": "orchestrator",
+  "cynefin": "complex",
+  "confidence": 0.4,
+  "rationale": "Sprint 14 explores a new RAG integration whose behavior cannot be characterized without running probes. Demonstrating that low confidence is acceptable and is explicit signal: the rubric may shift to 'complicated' or 'chaotic' once early probe results land.",
+  "expected_loop_shape": "probe-campaign",
+  "projection_manifest": [
+    ".harness/contracts/sprint-14.md",
+    ".council/jishuken/rag-tradeoffs-2026-04-22.md"
+  ],
+  "autonomy_floor_observed": 3
+}

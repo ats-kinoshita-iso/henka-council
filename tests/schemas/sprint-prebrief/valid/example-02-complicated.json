@@ -1,0 +1,16 @@
+{
+  "sprint_number": 13,
+  "classified_at": "2026-05-13T22:55:00Z",
+  "classified_by_agent": "orchestrator",
+  "cynefin": "complicated",
+  "confidence": 0.75,
+  "rationale": "Sprint 13 introduces a new validator script that must satisfy a precise schema contract and integrate with two existing append-only hooks. Cause-and-effect are knowable but require careful design before implementation; a plan-then-execute shape fits the work.",
+  "expected_loop_shape": "plan-then-execute-loop",
+  "projection_manifest": [
+    ".harness/contracts/sprint-13.md",
+    ".council/standard-work.json",
+    "schemas/decision-log-entry.schema.json",
+    "hooks/enforce-append-only.sh"
+  ],
+  "autonomy_floor_observed": 4
+}

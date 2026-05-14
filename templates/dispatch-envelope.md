@@ -57,6 +57,13 @@ Task(
 Inputs (read-only):
 - <list of file paths the agent should read>
 
+Sprint prebrief reference (OPTIONAL):
+- .council/sprint-prebrief/sprint-{NN}.json — the Orchestrator's Cynefin
+  classification for this sprint, written at Step 1A.6 of council-autorun.
+  Cite this path when the dispatch is for a sprint that has a prebrief
+  artefact; omit otherwise. Inclusion is informational; the prebrief does
+  NOT constrain agent behavior at this stage (per ADR-0003).
+
 Task:
 <Structured description of the specific task — what to analyze, what to
 produce, what scope to cover. Written as file paths and structured constraints,

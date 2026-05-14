@@ -165,6 +165,85 @@ surfaces them and records the user's ratification decision.
 
 ---
 
+## Step 1A.6 — Sprint Prebrief Classification
+
+*Source: ADR-0003. Audit-only at this stage; does not change dispatch fan-out
+or the autonomy floor.*
+
+**Purpose:** record a Cynefin classification of the upcoming sprint so that
+audit data captures the Orchestrator's prospective read of the work. The
+classification is informational; it does not modify any downstream council
+behavior at this stage.
+
+### 1A.6.1 — Read inputs
+
+Read at minimum:
+
+- `.harness/contracts/sprint-{NN}.md` — the sprint contract describing
+  the deliverable.
+- `.council/standard-work.json` — active procedures, loop-shapes, and
+  failure patterns.
+- Yokoten-relevant records surfaced in Step 1A.5 above.
+
+Optionally also: prior `.council/sprint-prebrief/sprint-{NN-1}.json`,
+`.council/jishuken/*.md` artefacts relevant to the upcoming work.
+
+### 1A.6.2 — Classify per the rubric
+
+Apply `@instructions/sprint-prebrief.md` to select one of `clear`,
+`complicated`, `complex`, or `chaotic`. Confidence is required and may
+be low; honest uncertainty is preserved as `confidence: <0.5` rather
+than inflated to avoid the appearance of uncertainty.
+
+Name the expected loop-shape: either a `shape_id` from
+`standard-work.loop_shapes[]` (e.g. `plan-then-execute-loop`,
+`probe-campaign`) or the literal value `"ad-hoc"` when no named shape
+fits.
+
+### 1A.6.3 — Write the prebrief
+
+Write `.council/sprint-prebrief/sprint-{NN}.json` per the schema in
+`schemas/sprint-prebrief.schema.json`. Fields:
+
+- `sprint_number`, `classified_at` (ISO 8601 UTC), `classified_by_agent`
+- `cynefin`, `confidence`, `rationale` (one paragraph citing the
+  specific characteristics that informed the label)
+- `expected_loop_shape`
+- OPTIONAL: `projection_manifest` (paths read for this classification),
+  `stabilization_note` (when `cynefin: "chaotic"`),
+  `autonomy_floor_observed` (captured for later analysis;
+  classification does NOT adjust the floor at this stage)
+
+The file is overwritten on re-run for the same sprint number (it is
+state, not an append-only log).
+
+### 1A.6.4 — Surface to user
+
+Present the classification to the user inline in the autorun output,
+e.g.:
+
+> "Sprint {NN} prebrief: cynefin = `{label}` (confidence {value}).
+> Expected loop-shape: `{shape_id_or_ad-hoc}`. Rationale: {one paragraph}."
+
+If `cynefin: "chaotic"` with confidence ≥ 0.6, additionally surface:
+
+> "Recommendation: stabilization step before proceeding. The autorun
+> loop does not halt automatically at this stage (ADR-0003); the user
+> may choose to halt and address the chaotic-class conditions before
+> trine-eval delegation."
+
+### 1A.6.5 — Mid-sprint mis-classification
+
+The prebrief is frozen at sprint entry. If during execution the
+Orchestrator observes that the classification was wrong, do NOT
+rewrite the prebrief. Instead append a henka-record with
+`fourM_axis: "Method"`, `category: "classification-mismatch"`,
+`change_origin: "passive"`, and evidence citing the original prebrief
+file. The mismatch is then propagated through the standard yokoten
+and PDCA pathways.
+
+---
+
 ## Step 1B — Delegate to /trine-eval:harness-sprint
 
 *Source: §8.2 Step 1B*

@@ -1,0 +1,14 @@
+{
+  "sprint_number": 12,
+  "classified_at": "2026-05-13T22:50:00Z",
+  "classified_by_agent": "orchestrator",
+  "cynefin": "clear",
+  "confidence": 0.9,
+  "rationale": "Sprint 12 implements an already-ratified procedure (PROC-007 from standard-work.json) against a fresh module. The path is well-trodden across three prior sprints (8, 9, 11); no novel decisions are required and the acceptance criteria are deterministic.",
+  "expected_loop_shape": "ad-hoc",
+  "projection_manifest": [
+    ".harness/contracts/sprint-12.md",
+    ".council/standard-work.json"
+  ],
+  "autonomy_floor_observed": 4
+}

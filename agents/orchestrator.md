@@ -217,3 +217,6 @@ All behaviors in this file are augmented by:
 - `@instructions/controlled-artifacts.md` — sacred files, append-only logs,
   write access rules
 - `@instructions/prompt-injection-defense.md` — injection resistance
+- `@instructions/sprint-prebrief.md` — Cynefin classification rubric for the
+  prospective read recorded at council-autorun Step 1A.6. Informational at
+  this stage; does not modify dispatch or the autonomy floor (see ADR-0003).

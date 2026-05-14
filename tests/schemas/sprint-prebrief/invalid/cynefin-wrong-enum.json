@@ -1,0 +1,8 @@
+{
+  "sprint_number": 15,
+  "classified_at": "2026-05-13T23:05:00Z",
+  "cynefin": "easy",
+  "confidence": 0.8,
+  "rationale": "Demo fixture: 'easy' is not a valid Cynefin label.",
+  "expected_loop_shape": "ad-hoc"
+}
