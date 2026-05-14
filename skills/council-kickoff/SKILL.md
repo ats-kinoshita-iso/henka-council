@@ -181,6 +181,38 @@ the snippet but does not write it.
 
 ---
 
+### Step 1e — Projection Cost Measurement (advisory)
+
+Run the projection-cost measurement script and surface the result to the user.
+This step is informational only; it does not block kickoff completion.
+
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/scripts/measure-projection-cost.py --json
+```
+
+On Windows targets, substitute `python` with `python.exe` if the bare command
+is not on `PATH`. The script reads `.claude-plugin/plugin.json` from the
+plugin install directory, sums per-file token estimates for the always-projected
+file set (`CLAUDE.md` + `skills` + `agents`), and reports the total against
+an 8,000-token advisory budget.
+
+Surface to the user:
+
+> "Plugin projection-cost baseline: `<total>` of 8,000 tokens (`<headroom>`
+> remaining). Methodology and re-baseline rules: `instructions/projection-cost.md`."
+
+If the measurement reports `over_budget: true`, append:
+
+> "WARNING: the always-projected surface is over budget by `<delta>` tokens.
+> See `docs/design/adr-0002-projection-cost-budget.md` for remediation paths
+> (trim, promote to on-demand, or re-baseline via a follow-up ADR)."
+
+This step is idempotent: re-running kickoff against an already-bootstrapped
+project re-runs the measurement and re-surfaces the result. The script does
+not write any files; it emits to stdout only.
+
+---
+
 ### Step 2 — Create `.council/config.json`
 
 Write `.council/config.json` with the following content structure (idempotent:
