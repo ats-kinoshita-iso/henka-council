@@ -136,6 +136,70 @@
         },
         "additionalProperties": false
       }
+    },
+    "loop_shapes": {
+      "type": "array",
+      "description": "Named reusable structures for HOW loops are organized (e.g. 'Plan-Then-Execute Loop', 'Probe Campaign', 'Verify-Until-Pass'). Distinct from procedures: loop-shapes use the pattern-language form (problem / forces / solution / consequences / when-not-to-use) and are abstract structural patterns rather than ordered step lists. Candidates are ratified via the standard 4-stage nemawashi walkthrough; status moves candidate -> ratified. See docs/design/adr-0005-loop-shape-pattern-category.md.",
+      "items": {
+        "type": "object",
+        "required": [
+          "shape_id",
+          "name",
+          "problem",
+          "forces",
+          "solution",
+          "consequences",
+          "evidence_sprints",
+          "status"
+        ],
+        "properties": {
+          "shape_id": {
+            "type": "string",
+            "description": "Unique identifier slug for this loop-shape (e.g. 'plan-then-execute-loop')."
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name (e.g. 'Plan-Then-Execute Loop')."
+          },
+          "problem": {
+            "type": "string",
+            "description": "The recurring problem this shape addresses."
+          },
+          "forces": {
+            "type": "string",
+            "description": "The competing forces / tradeoffs the shape balances."
+          },
+          "solution": {
+            "type": "string",
+            "description": "The structural solution this shape proposes."
+          },
+          "consequences": {
+            "type": "string",
+            "description": "What the shape costs and gains; the tradeoffs accepted."
+          },
+          "when_not_to_use": {
+            "type": "string",
+            "description": "Conditions under which this shape is the wrong choice."
+          },
+          "evidence_sprints": {
+            "type": "array",
+            "items": {"type": "integer", "minimum": 0},
+            "minItems": 1,
+            "description": "Sprint numbers where this loop-shape has been observed or applied. Required to be non-empty; candidates without observed evidence are not ratifiable."
+          },
+          "ratified_decision_id": {
+            "type": ["string", "null"],
+            "pattern": "^DEC-[0-9]{4,}$",
+            "description": "DEC-NNNN identifier of the nemawashi decision that ratified this loop-shape. Null or absent while status is 'candidate'."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["candidate", "ratified", "deprecated"],
+            "description": "Lifecycle status. 'candidate' = proposed but not yet through nemawashi. 'ratified' = approved via 4-stage walkthrough. 'deprecated' = retired but kept for audit traceability."
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "additionalProperties": false
