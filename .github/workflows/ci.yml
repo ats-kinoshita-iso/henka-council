@@ -50,6 +50,12 @@ jobs:
       - name: Run Python rotation fixture test
         run: python tests/hooks/test-rotate-audit-log.py
 
+      - name: Run Python projection-cost test
+        run: python tests/scripts/test-measure-projection-cost.py
+
+      - name: Measure projection cost (advisory)
+        run: python scripts/measure-projection-cost.py --ci
+
       - name: Validate CI YAML (self-check)
         run: |
           python -c "
