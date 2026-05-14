@@ -205,7 +205,7 @@ council-review session, key fields include:
 |---|---|
 | `decision_id` | `DEC-{NNNN}` (sequential) |
 | `decision_type` | `"council-review-correction"`, `"sprint-halt"`, `"andon-resolution"` |
-| `decision_outcome` | `"applied"`, `"proposed"`, `"halted"` |
+| `decision_outcome` | `"applied"`, `"proposed"`, `"rejected"`, `"deferred"`, `"halted"`, `"superseded"` (per `schemas/decision-log-entry.schema.json`) |
 | `autonomy_level_used` | Effective level at the time of the decision |
 | `effective_autonomy_at_decision` | Level from `.council/state/effective-autonomy.json` |
 | `reversibility` | `"reversible"` or `"irreversible"` |

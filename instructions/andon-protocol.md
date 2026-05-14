@@ -94,6 +94,75 @@ proceed. This is a committed signal, not a request.
 
 ---
 
+## Andon Stop vs No-Progress vs Resource-Cap (MUST NOT conflate)
+
+Loops in this system can terminate for three structurally distinct reasons,
+each of which has its own `response_type` value on the closing henka-record
+(`schemas/henka-record.schema.json`). The three MUST NOT be conflated in
+audit data, because they encode different things about who decided the loop
+should stop and why.
+
+### `andon-stop` — agent-detected safety anomaly
+
+The agent has observed a condition that makes proceeding unsafe — a
+contradiction, a corrupted artefact, a verification divergence, a scope
+violation, anything that triggers jidoka. This is the case the existing
+andon protocol covers above. The agent issues `andon_signal: stop`, the
+Orchestrator honors it unconditionally, and the closing henka-record uses
+`response_type: "andon-stop"`. The decision to stop is the agent's call;
+the trigger is a specific observable defect.
+
+### `no-progress` — agent's own metacognitive judgment
+
+The agent has tried two or three distinct approaches at the same blocker
+and observed that none of them advanced the state on the declared
+objective. Nothing is unsafe; nothing is contradictory; the agent simply
+judges that further attempts are not productive. The closing henka-record
+uses `response_type: "no-progress"` and MUST carry a non-empty `attempts`
+array enumerating each approach tried and why it did not advance.
+
+`no-progress` is distinct from `andon-stop` because there is no anomaly
+being flagged — only the agent's calibrated judgment about its own
+forward motion. The Orchestrator does NOT issue the thank-the-puller
+acknowledgment on `no-progress`; the acknowledgment is reserved for the
+safety-critical andon path. The Orchestrator records the no-progress
+henka-record and closes the loop's decision-log entry with
+`decision_outcome: "halted"`.
+
+### `resource-cap` — harness-imposed limit
+
+A technical limit has fired regardless of what any agent is judging:
+takt-window expiry (`andon_takt_seconds`), nemawashi-revision iteration
+cap (default 2 cycles in Stage 3), context-window exhaustion, token
+budget, time budget. The Orchestrator on behalf of the harness writes a
+henka-record with `response_type: "resource-cap"` and closes the loop's
+decision-log entry with `decision_outcome: "halted"`. No agent judgment
+is captured here; the cap fired and the loop ended.
+
+If an agent believed it was about to succeed when a resource cap fired,
+that is a calibration signal for the cap, not a reason to override it.
+Resource caps are the harness's safety net, not its preference.
+
+### Encoded by authorship
+
+The agent-vs-harness distinction is encoded by who writes the record:
+
+- `andon-stop` and `no-progress` are written by **agents** (henkaten-
+  detector, architect, scope-guardian, retrospective, etc.) reporting
+  their own observations and judgments.
+- `resource-cap` is written by the **Orchestrator** on the harness's
+  behalf when a technical limit fires.
+
+Audit reviewers reading the henka-register can immediately distinguish
+agent decisions from harness-imposed terminations by inspecting both
+`response_type` and `detected_by_agent`. Conflating the three types
+destroys this signal.
+
+See `@instructions/stop-conditions.md` for the full five-form taxonomy
+(success / failure / no-progress / resource-cap / interrupt).
+
+---
+
 ## Rule 4 Carve-Out (v2.1 Amendment A10)
 
 **Rule 4 — Bounded Self-Organization** states that agents may flag the need for
@@ -263,7 +332,11 @@ auto-resume. The following steps govern resolution:
 5. **Decision-log entry:** the orchestrator appends a record to
    `decision-log.jsonl` (via `scripts/append-decision.py`) with:
    - `decision_type: "andon-resolution"`
-   - `decision_outcome: "resumed"` (or `"halted-permanently"` if unresolved)
+   - `decision_outcome: "applied"` (or `"halted"` if unresolved). The
+     `andon_resolution` sub-object on the same entry carries the
+     resolution-specific outcome: `andon_resolution.resolution` is one of
+     `"resumed"`, `"escalated_to_stop"`, or `"user_intervention"` per
+     `schemas/decision-log-entry.schema.json`.
    - `council_agents_involved`: [originating agent, any swarm members]
    - `evidence_cited`: the original stop evidence plus resolution evidence
    - `applied_automatically: false`
@@ -275,10 +348,10 @@ auto-resume. The following steps govern resolution:
 ### Unresolved Stops
 
 If a stop cannot be resolved (the blocking condition persists), the decision-log
-entry uses `decision_outcome: "halted-permanently"` and the sprint is abandoned.
-The Orchestrator surfaces the halt evidence in its final response. A new sprint
-must be initiated from scratch; the autorun loop does not retry halted sprints
-automatically.
+entry uses `decision_outcome: "halted"` (per `schemas/decision-log-entry.schema.json`)
+and the sprint is abandoned. The Orchestrator surfaces the halt evidence in its
+final response. A new sprint must be initiated from scratch; the autorun loop
+does not retry halted sprints automatically.
 
 ---
 
