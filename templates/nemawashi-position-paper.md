@@ -11,6 +11,7 @@ proposed_change_type: major | irreversible-action
 reversibility: reversible | irreversible
 status: draft | revised-rev{N} | ratified | rejected | deferred
 nemawashi_walkthrough_version: {N}  # 0 if no Stage 3 revisions; ≥1 after Stage 3 cycles
+pattern_type: procedure | failure-pattern | evaluation-improvement | workflow-note | loop-shape  # OPTIONAL — declares which standard-work[] array a Stage 4 ratification updates; omit for non-standard-work decisions
 ```
 
 **Document ID:** DEC-{NNNN}

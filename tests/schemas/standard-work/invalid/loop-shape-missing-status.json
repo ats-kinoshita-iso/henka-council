@@ -1,0 +1,22 @@
+{
+  "version": "1.1.0",
+  "updated_at": "2026-05-13T22:35:00Z",
+  "procedures": [
+    {
+      "procedure_id": "PROC-001",
+      "name": "Sprint kickoff",
+      "steps": ["Read spec", "Draft contract", "Await approval"]
+    }
+  ],
+  "loop_shapes": [
+    {
+      "shape_id": "incomplete-shape",
+      "name": "Incomplete Shape",
+      "problem": "Demo entry missing the required status field.",
+      "forces": "Test fixture for negative validation.",
+      "solution": "Should be rejected by the schema.",
+      "consequences": "Schema validation must fail with `required` keyword for `status`.",
+      "evidence_sprints": [1]
+    }
+  ]
+}

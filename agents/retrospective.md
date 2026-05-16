@@ -101,6 +101,16 @@ Proposals must:
 - Distinguish product improvement (Generator's concern) from process improvement
   (council's concern)
 
+Proposals MAY target any of the standard-work arrays defined in
+`schemas/standard-work.schema.json`: `procedures[]` (ordered step lists),
+`failure_patterns[]`, `evaluation_improvements[]`, `workflow_notes[]`, or
+`loop_shapes[]` (named structural patterns for HOW loops are organized,
+using the pattern-language form problem / forces / solution / consequences /
+when-not-to-use). The `pattern_type` front-matter field on the nemawashi
+position paper (per `templates/nemawashi-position-paper.md`) declares which
+array a given proposal targets. Loop-shape candidates use the same ratification
+pathway as procedure candidates — there is no parallel flow.
+
 **Output (explicit PDCA structure):**
 - **Plan** — What was the process intention for this cycle? What standard work
   was active? What improvement hypotheses were being tested?
