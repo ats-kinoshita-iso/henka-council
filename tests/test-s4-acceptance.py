@@ -122,11 +122,13 @@ def main() -> int:
         failures.append(msg)
 
     # -----------------------------------------------------------------------
-    # Assertion 3: skills/council-autorun/SKILL.md exists and contains all 10
-    #              step headings (1A, 1A.5, 1B, 1C, 1D, 1E, 1F, 1G, 1H, 1I)
+    # Assertion 3: skills/council-autorun/SKILL.md exists and contains all 11
+    #              step headings (1A, 1A.5, 1A.6, 1B, 1C, 1D, 1E, 1F, 1G, 1H, 1I)
     # -----------------------------------------------------------------------
     n = 3
-    required_steps = ["1A", "1A.5", "1B", "1C", "1D", "1E", "1F", "1G", "1H", "1I"]
+    required_steps = [
+        "1A", "1A.5", "1A.6", "1B", "1C", "1D", "1E", "1F", "1G", "1H", "1I"
+    ]
     if not _SKILL_MD.exists():
         msg = f"skills/council-autorun/SKILL.md does not exist at {_SKILL_MD}"
         _fail(n, total, msg)
@@ -149,7 +151,7 @@ def main() -> int:
             _fail(n, total, msg)
             failures.append(msg)
         else:
-            _pass(n, total, "SKILL.md exists and contains all 10 step headings")
+            _pass(n, total, "SKILL.md exists and contains all 11 step headings")
 
     # -----------------------------------------------------------------------
     # Assertion 4: instructions/andon-protocol.md contains verbatim

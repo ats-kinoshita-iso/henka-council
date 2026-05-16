@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sprint-prebrief.schema.json",
+  "title": "SprintPrebrief",
+  "description": "Cynefin classification recorded by the Orchestrator at sprint entry. Lives at .council/sprint-prebrief/sprint-NN.json. Informational at this stage; does not modify dispatch fan-out or the autonomy floor. See instructions/sprint-prebrief.md and docs/design/adr-0003-cynefin-classification.md.",
+  "type": "object",
+  "required": [
+    "sprint_number",
+    "classified_at",
+    "cynefin",
+    "confidence",
+    "rationale",
+    "expected_loop_shape"
+  ],
+  "properties": {
+    "sprint_number": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "The sprint number this prebrief describes."
+    },
+    "classified_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the classification was recorded."
+    },
+    "classified_by_agent": {
+      "type": "string",
+      "description": "Agent ID that produced the classification (typically the Orchestrator)."
+    },
+    "cynefin": {
+      "type": "string",
+      "enum": ["clear", "complicated", "complex", "chaotic"],
+      "description": "Cynefin classification of the upcoming sprint. clear = known solution exists, path well-trodden; complicated = path requires expert analysis but cause-and-effect knowable; complex = probe-and-emerge territory with no stable baseline; chaotic = no order visible, stabilization required before tactical action."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Classifier confidence in the Cynefin label. Low confidence (e.g. < 0.5) is acceptable and is explicit signal that the classification may need to be revised mid-sprint."
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One-paragraph rationale for the chosen classification. Cites the specific characteristics of the upcoming work that informed the label."
+    },
+    "expected_loop_shape": {
+      "type": "string",
+      "description": "Either a shape_id from standard-work.loop_shapes (e.g. 'plan-then-execute-loop', 'probe-campaign') OR the literal value 'ad-hoc' when no named shape fits. The literal 'ad-hoc' is intentionally permitted to keep the field useful before the standard-work.loop_shapes[] array accumulates entries."
+    },
+    "projection_manifest": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "OPTIONAL list of file paths that were loaded into context to produce this classification. Captures input provenance for audit review; matches sangen's projection-manifest concept without taking on sangen's full loop-tracking framework."
+    },
+    "stabilization_note": {
+      "type": "string",
+      "description": "OPTIONAL. When cynefin is 'chaotic', records the stabilization step recommended before the sprint proceeds. Informational; the council-autorun loop does not mechanically halt on chaotic at this stage."
+    },
+    "autonomy_floor_observed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5,
+      "description": "OPTIONAL effective autonomy floor at the time of classification. Captured for later analysis of whether classification correlates with autonomy state; the classification itself does NOT adjust the floor at this stage (deliberately non-coupled per ADR-0003)."
+    }
+  },
+  "additionalProperties": false
+}

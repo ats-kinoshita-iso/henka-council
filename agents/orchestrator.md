@@ -242,3 +242,6 @@ All behaviors in this file are augmented by:
 - `@instructions/stop-conditions.md` — five-form loop-termination taxonomy
   (success / failure / no-progress / resource-cap / interrupt) and the
   agent-vs-harness distinction encoded in record authorship
+- `@instructions/sprint-prebrief.md` — Cynefin classification rubric for the
+  prospective read recorded at council-autorun Step 1A.6. Informational at
+  this stage; does not modify dispatch or the autonomy floor (see ADR-0003).
