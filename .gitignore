@@ -27,3 +27,8 @@ Thumbs.db
 # Local-only env / secrets (defense-in-depth — none expected in this repo)
 .env
 .env.local
+
+# Claude Code local artifacts (per-user, per-machine)
+.claude/settings.local.json
+.claude/worktrees/
+.clone/

@@ -656,7 +656,7 @@ Required fields per `schemas/decision-log-entry.schema.json`:
 | `decision_id` | Sequential `DEC-NNNN` identifier |
 | `timestamp` | ISO 8601 UTC timestamp at time of logging |
 | `decision_type` | e.g., `"minor-correction"`, `"major-correction"`, `"sprint-halt"`, `"andon-resolution"` |
-| `decision_outcome` | `"applied"`, `"proposed"`, `"halted"`, `"deferred"`, `"rejected"` |
+| `decision_outcome` | `"applied"`, `"proposed"`, `"rejected"`, `"deferred"`, `"halted"`, `"superseded"` (per `schemas/decision-log-entry.schema.json`; use `"halted"` when an andon stop or harness-imposed resource cap terminates the sprint before the decision is applied) |
 | `autonomy_level_used` | The level the orchestrator was operating at when the change was applied |
 | `effective_autonomy_at_decision` | Level read from `.council/state/effective-autonomy.json` at the moment the decision was made |
 | `reversibility` | `"reversible"` or `"irreversible"` |

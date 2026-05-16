@@ -146,6 +146,28 @@ Every correction, classification, and review outcome is logged to
 
 See `schemas/decision-log-entry.schema.json` for the full schema.
 
+#### 5a. Loop-Termination Recording
+
+When a sprint or council loop terminates without applying a decision — for
+example after an andon stop, a no-progress determination, or a harness-imposed
+resource cap — the Orchestrator MUST:
+
+1. **Append a closing henka-record** via `scripts/append-henka.py` with an
+   appropriate `response_type` from the schema enum:
+   `"no-progress"` (agent's metacognitive judgment that it cannot advance,
+   with non-empty `attempts[]` enumerating what was tried),
+   `"resource-cap"` (harness-imposed limit reached regardless of agent
+   judgment), or `"andon-stop"` (safety-critical agent-detected anomaly).
+   These three response types MUST NOT be conflated in audit data.
+2. **Append a closing decision-log entry** with `decision_outcome: "halted"`,
+   `linked_henka_id` set to the henka-record from step 1, and
+   `description` summarising the termination cause.
+
+The agent-vs-harness distinction is encoded by who writes the henka-record:
+agent observations write `"no-progress"` or `"andon-stop"`; the Orchestrator
+on behalf of the harness writes `"resource-cap"`. The five-form termination
+taxonomy is documented in `@instructions/stop-conditions.md`.
+
 ### 6. Level 4 — Explicit Designation
 
 This agent is Level 4. It may coordinate multi-step workflows and dispatch
@@ -217,6 +239,9 @@ All behaviors in this file are augmented by:
 - `@instructions/controlled-artifacts.md` — sacred files, append-only logs,
   write access rules
 - `@instructions/prompt-injection-defense.md` — injection resistance
+- `@instructions/stop-conditions.md` — five-form loop-termination taxonomy
+  (success / failure / no-progress / resource-cap / interrupt) and the
+  agent-vs-harness distinction encoded in record authorship
 - `@instructions/sprint-prebrief.md` — Cynefin classification rubric for the
   prospective read recorded at council-autorun Step 1A.6. Informational at
   this stage; does not modify dispatch or the autonomy floor (see ADR-0003).

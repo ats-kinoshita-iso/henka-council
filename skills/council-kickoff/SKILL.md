@@ -181,6 +181,38 @@ the snippet but does not write it.
 
 ---
 
+### Step 1e — Projection Cost Measurement (advisory)
+
+Run the projection-cost measurement script and surface the result to the user.
+This step is informational only; it does not block kickoff completion.
+
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/scripts/measure-projection-cost.py --json
+```
+
+On Windows targets, substitute `python` with `python.exe` if the bare command
+is not on `PATH`. The script reads `.claude-plugin/plugin.json` from the
+plugin install directory, sums per-file token estimates for the always-projected
+file set (`CLAUDE.md` + `skills` + `agents`), and reports the total against
+an 8,000-token advisory budget.
+
+Surface to the user:
+
+> "Plugin projection-cost baseline: `<total>` of 8,000 tokens (`<headroom>`
+> remaining). Methodology and re-baseline rules: `instructions/projection-cost.md`."
+
+If the measurement reports `over_budget: true`, append:
+
+> "WARNING: the always-projected surface is over budget by `<delta>` tokens.
+> See `docs/design/adr-0002-projection-cost-budget.md` for remediation paths
+> (trim, promote to on-demand, or re-baseline via a follow-up ADR)."
+
+This step is idempotent: re-running kickoff against an already-bootstrapped
+project re-runs the measurement and re-surfaces the result. The script does
+not write any files; it emits to stdout only.
+
+---
+
 ### Step 2 — Create `.council/config.json`
 
 Write `.council/config.json` with the following content structure (idempotent:
@@ -288,7 +320,7 @@ If `.council/decision-log.jsonl` does not exist: create the file with a
 single seed entry representing the kickoff decision:
 
 ```json
-{"dec_id":"DEC-0001","timestamp":"<ISO-8601-now>","decision_type":"kickoff","decision_outcome":"council-baseline-created","council_agents_involved":["orchestrator"],"evidence_cited":[],"applied_automatically":true,"user_approval_required":false,"affected_files":[".council/config.json",".council/council-manifest.json"],"linked_henka_id":null,"sprint_context":"kickoff","autonomy_level_used":4,"effective_autonomy_at_decision":4,"reversibility":"reversible","nemawashi_walkthrough_version":null}
+{"decision_id":"DEC-0001","timestamp":"<ISO-8601-now>","decision_type":"kickoff","decision_outcome":"applied","council_agents_involved":["orchestrator"],"evidence_cited":[],"applied_automatically":true,"user_approval_required":false,"affected_files":[".council/config.json",".council/council-manifest.json"],"sprint_context":0,"autonomy_level_used":4,"effective_autonomy_at_decision":4,"reversibility":"reversible","nemawashi_walkthrough_version":null,"description":"Council baseline created (kickoff)."}
 ```
 
 #### `audit-log.jsonl`

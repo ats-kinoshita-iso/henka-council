@@ -132,19 +132,50 @@ this section.*
 ### Standard-Work Proposal Candidates
 
 *Each proposal must be grounded in ≥2 sprints of evidence (or 1 sprint with
-strong deterministic evidence and explicit justification).*
+strong deterministic evidence and explicit justification). Proposals MAY
+target any of the standard-work arrays: `procedures[]`, `failure_patterns[]`,
+`evaluation_improvements[]`, `workflow_notes[]`, or `loop_shapes[]` (the
+last documented in its own subsection below).*
 
-| Proposal | Grounding Evidence | Priority | Action |
-|---|---|---|---|
-| {description of proposed change} | {sprint evidence, ≥2 sprints} | high \| medium \| low | advance via nemawashi \| defer |
+| Proposal | Pattern Type | Grounding Evidence | Priority | Action |
+|---|---|---|---|---|
+| {description of proposed change} | procedure \| failure-pattern \| evaluation-improvement \| workflow-note \| loop-shape | {sprint evidence, ≥2 sprints} | high \| medium \| low | advance via nemawashi \| defer |
 
 **How to advance a proposal:**
 1. Invoke council-autorun Step 1D (nemawashi walkthrough) for each proposal
-   the team wants to ratify.
+   the team wants to ratify. Set `pattern_type` in the nemawashi position
+   paper front-matter to declare which standard-work array the proposal
+   targets.
 2. The walkthrough produces a DEC entry and, after Stage 4 ratification,
    updates `standard-work.json`.
 3. `standard-work.json` is NEVER modified directly from this template or the
    Act section — all changes require explicit Level 5 ratification.
+
+### Loop-Shape Candidates
+
+*OPTIONAL — fill in only when the PDCA cycle surfaced a reusable structural
+pattern for HOW loops are organized (e.g. "Plan-Then-Execute Loop", "Probe
+Campaign"). Loop-shapes use the pattern-language form, distinct from
+procedure step lists. See ADR-0005 for the design rationale.*
+
+For each candidate, document the pattern-language fields the schema requires
+(`schemas/standard-work.schema.json` `loop_shapes[]` entries):
+
+#### Candidate: {shape_id}
+
+- **Name:** {human-readable name}
+- **Problem:** {the recurring problem this shape addresses}
+- **Forces:** {the competing forces / tradeoffs the shape balances}
+- **Solution:** {the structural solution}
+- **Consequences:** {what the shape costs and gains}
+- **When not to use:** {conditions where this shape is the wrong choice} (OPTIONAL)
+- **Evidence sprints:** [{sprint numbers where this pattern was observed}]
+- **Status:** candidate
+
+Loop-shape candidates ratify through the same 4-stage nemawashi walkthrough
+as procedure candidates. The position paper's front-matter sets
+`pattern_type: loop-shape` so the Stage 4 ratification updates
+`loop_shapes[]` rather than `procedures[]`.
 
 ### Deferred Candidates
 

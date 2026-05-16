@@ -115,6 +115,16 @@ fan-in. Non-conformant verification strings are rejected and logged as
 
 ---
 
+## Projection Cost
+
+The plugin's always-projected file set (this `CLAUDE.md` plus the agents and
+skills listed in `.claude-plugin/plugin.json`) is governed by an advisory
+8,000-token budget. Methodology, override convention, and re-baseline rules
+live in `instructions/projection-cost.md` (loaded on demand, not auto-loaded);
+measurement runs at kickoff and in CI.
+
+---
+
 ## Key File Paths at a Glance
 
 ```

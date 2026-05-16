@@ -1,0 +1,41 @@
+{
+  "version": "1.1.0",
+  "updated_at": "2026-05-13T22:30:00Z",
+  "updated_by": "orchestrator",
+  "ratified_decision_id": "DEC-0123",
+  "procedures": [
+    {
+      "procedure_id": "PROC-001",
+      "name": "Sprint kickoff",
+      "steps": [
+        "Read .harness/spec.md and .harness/sprints.json",
+        "Write sprint contract to .harness/contracts/sprint-NN.md",
+        "Await evaluator approval before implementation"
+      ]
+    }
+  ],
+  "loop_shapes": [
+    {
+      "shape_id": "plan-then-execute-loop",
+      "name": "Plan-Then-Execute Loop",
+      "problem": "When the work is non-trivial and the cost of going in the wrong direction is high, executing immediately on first instinct risks substantial wasted effort.",
+      "forces": "Planning costs time at the start that feels unproductive. Under deadline pressure the temptation is to start executing immediately. But execution that runs ahead of explicit planning bakes in assumptions invisibly, producing output that looks correct in isolation but breaks the surrounding system. Not all work needs planning — clear-class loops where the path is well-trodden lose value from upfront planning overhead.",
+      "solution": "Structure the loop as two distinct phases (plan, then execute) with an approval gate between them. The producer drafts a written plan, surfaces it for approval, then executes mechanically against the approved plan.",
+      "consequences": "The plan becomes a reviewable artefact, separating architectural decisions from implementation. Wrong directions are caught before execution rather than after. The cost is an explicit planning phase that some loops do not need.",
+      "when_not_to_use": "For clear-class loops where the path is well-trodden. For genuinely exploratory work where the value comes from probe-and-emerge rather than from committed planning. For work where the cost of unwinding wrong execution is so low that pre-planning costs more than experimentation.",
+      "evidence_sprints": [3, 5, 7],
+      "ratified_decision_id": "DEC-0123",
+      "status": "ratified"
+    },
+    {
+      "shape_id": "probe-campaign",
+      "name": "Probe Campaign",
+      "problem": "When the work is complex-class (probe-and-emerge territory) and no single planned path is reliable, committing to one approach risks discovering its inadequacy only after substantial work.",
+      "forces": "Probes have setup cost; running too few wastes the campaign's exploratory value. Running too many fragments effort and delays convergence. The right count depends on the dimension of variation being probed.",
+      "solution": "Launch two to three safe-to-fail probes in parallel, each with a declared hypothesis, success criterion, failure criterion, and rollback step. Gather results, then converge or pivot based on what was observed.",
+      "consequences": "Higher upfront effort than a single planned path. Better-grounded next-step decision. Probe results become saturation evidence for future loop-shape candidates.",
+      "evidence_sprints": [6],
+      "status": "candidate"
+    }
+  ]
+}
