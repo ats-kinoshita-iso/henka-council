@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "plan-handoff.schema.json",
+  "title": "PlanHandoff",
+  "description": "Frontmatter envelope written by /henkaten-council:from-plan when it persists a plan-mode artifact. The body of the persisted file follows the frontmatter as verbatim plan-mode prose. The envelope is serialised as JSON inside YAML-style '---' fences (JSON is a valid YAML subset) so no YAML dependency is required to parse it. See skills/from-plan/SKILL.md for the routing logic that consumes this envelope and templates/plan-handoff-frontmatter.md for the reference layout.",
+  "type": "object",
+  "required": [
+    "intent",
+    "generated_at",
+    "plan_sha256",
+    "governance_state_at_capture"
+  ],
+  "properties": {
+    "intent": {
+      "type": "string",
+      "enum": ["bootstrap", "pre-sprint", "course-correction"],
+      "description": "Which lifecycle entry point the plan targets. bootstrap = no .harness/ yet; pre-sprint = harness+council exist and a pending sprint has no contract; course-correction = recent sprint FAIL or an open change_origin:active high-risk henka."
+    },
+    "sprint_target": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "Sprint number this plan targets. REQUIRED when intent is pre-sprint or course-correction; null or omitted for bootstrap."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when the plan was persisted by scripts/persist-plan.py."
+    },
+    "plan_mode_session_id": {
+      "type": ["string", "null"],
+      "description": "Claude Code session id at the time of plan approval, when the runtime surfaces it. Null or omitted when not available."
+    },
+    "plan_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 hex digest of the canonicalised plan body. Canonical form: the UTF-8 bytes that follow the closing '---' fence's terminating newline and the single blank-line separator (\\n), normalised to end with exactly one trailing newline. An external auditor verifies the chain by reading the persisted file, stripping the frontmatter fence (regex `^---\\n.*?\\n---\\n\\n`), and re-hashing the remaining bytes. Cited as evidence in the plan-bridge decision-log entry."
+    },
+    "governance_state_at_capture": {
+      "type": "object",
+      "description": "Snapshot of governance-relevant state at the time the plan was persisted. Captured for audit only; downstream skills MUST re-read live state rather than trust this snapshot.",
+      "required": ["effective_autonomy", "open_henka_count"],
+      "properties": {
+        "effective_autonomy": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Effective autonomy floor from .council/state/effective-autonomy.json, or 4 (the orchestrator default) when .council/ does not yet exist (bootstrap case)."
+        },
+        "open_henka_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of henka records in .council/henka-register.jsonl at capture time. 0 when .council/ does not yet exist."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "intent": { "enum": ["pre-sprint", "course-correction"] }
+        },
+        "required": ["intent"]
+      },
+      "then": {
+        "required": ["sprint_target"],
+        "properties": {
+          "sprint_target": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  ]
+}
