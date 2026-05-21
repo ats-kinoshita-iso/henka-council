@@ -53,6 +53,21 @@ jobs:
       - name: Run Python projection-cost test
         run: python tests/scripts/test-measure-projection-cost.py
 
+      - name: Run effective-autonomy update test
+        run: python tests/scripts/test-update-effective-autonomy.py
+
+      - name: Run run-verification test
+        run: python tests/scripts/test-run-verification.py
+
+      - name: Run classify-plan-intent test
+        run: python tests/scripts/test-classify-plan-intent.py
+
+      - name: Run from-plan pre-sprint chain test
+        run: python tests/scripts/test-from-plan-pre-sprint-chain.py
+
+      - name: Run from-plan course-correction chain test
+        run: python tests/scripts/test-from-plan-course-correction-chain.py
+
       - name: Measure projection cost (advisory)
         run: python scripts/measure-projection-cost.py --ci
 

@@ -188,17 +188,45 @@ via `Task`. Each route is wired sprint-by-sprint:
   persisted path as the prompt source; no further argument plumbing is
   needed because the kickoff skills already discover state from
   `.council/proposed/`.
-- `pre-sprint` (Sprint 3) → `/trine-eval:harness-sprint NN`, passing
-  the contract-seed file path as a non-binding seed for contract
-  negotiation.
-- `course-correction` (Sprint 4) →
-  `/henkaten-council:council-review --consider <persisted-path>`.
 
-In the current sprint, only the `bootstrap` arm dispatches. If
-classification returns `pre-sprint` or `course-correction`, the
-Orchestrator persists and logs as usual but stops short of dispatch,
-surfacing the persisted path to the user with a note that the
-downstream skill arrives in a later sprint.
+- `pre-sprint` (Sprint 3, wired) → `/trine-eval:harness-sprint NN`.
+  The Orchestrator's `Task` invocation MUST surface the contract-seed
+  path in the prompt body, because `harness-sprint` does not take a
+  seed argument — its contract negotiator reads the seed by path. The
+  expected envelope:
+
+  ```
+  Task: /trine-eval:harness-sprint NN
+
+  Contract seed for this sprint was staged via /henkaten-council:from-plan.
+  Path: .council/proposed/sprint-NN-contract-seed.md
+  Treat the body of that file as a NON-BINDING seed for contract
+  negotiation. The Evaluator retains its standard review authority
+  and may reject any criterion that does not pass the testability
+  checks in /trine-eval:sprint-contract.
+  ```
+
+  The seed is non-binding by design — trine-eval's Evaluator still
+  applies its full contract-review pass; the seed only provides a
+  starting draft. If the seed file is absent at dispatch time, the
+  Orchestrator falls back to standard `harness-sprint` invocation and
+  logs a `change_origin: passive` henka record citing the missing
+  expected artifact.
+
+- `course-correction` (Sprint 4, wired) →
+  `/henkaten-council:council-review --consider <persisted-path>`.
+  council-review's Step R0.5 reads the paper, verifies the body's
+  SHA-256 matches the persisted `plan_sha256` (a mismatch surfaces a
+  `source-material-change` henka for user acknowledgment), and fans
+  the paper out to architect / scope-guardian / henkaten-detector /
+  retrospective as a constraint document. The agents evaluate the
+  proposal rather than deferring to it; their findings feed the
+  Step R3 decision-log entry whose `evidence_cited` carries the same
+  `plan_sha256` already cited by the `plan-bridge` entry from Step
+  5. The chain is therefore: `plan-bridge` (creation) →
+  `course-correction-{major,minor}` (council disposition).
+
+All three Step 6 arms now dispatch in the current sprint.
 
 ---
 
@@ -212,12 +240,15 @@ Wired:
 - Step 4 (hook self-check) — same procedure as `council-kickoff` §1d.
 - Step 5 (decision-log) — `scripts/append-decision.py` with
   `decision_type: plan-bridge` (Sprint 2).
-- Step 6 (dispatch) — `bootstrap` arm wired (Sprint 2).
+- Step 6 (dispatch) — all three arms wired:
+  - `bootstrap` (Sprint 2)
+  - `pre-sprint` (Sprint 3)
+  - `course-correction` via `--consider` (Sprint 4)
 
-Not wired yet:
-
-- Step 6 `pre-sprint` arm — Sprint 3.
-- Step 6 `course-correction` arm — Sprint 4.
+The from-plan skill is now feature-complete against its v0.1
+specification. Remaining work lives outside this skill: hardening
+hook installation gates, propagating the seed through trine-eval's
+contract negotiator, and broader integration test coverage.
 
 Sprint 1 demo: with an empty repo, invoke
 `/henkaten-council:from-plan --route bootstrap --plan-body <path>` →
@@ -232,6 +263,30 @@ stdout; then run `persist-plan.py` with that `--route`; then build the
 artifact, a validated `decision-log.jsonl` entry citing the plan's
 sha256, and (for `bootstrap`) a dispatch hand-off to
 `/trine-eval:harness-kickoff` + `/henkaten-council:council-kickoff`.
+
+Sprint 3 demo: in a project where `.harness/sprint-state.json` names
+an integer `current_sprint` N and `contracts/sprint-NN.md` is absent,
+the classifier returns `pre-sprint`. Persist with `--route pre-sprint
+--sprint N`; the seed lands at `.council/proposed/sprint-NN-
+contract-seed.md`. The Orchestrator then issues
+`Task: /trine-eval:harness-sprint NN` with the seed path embedded in
+the prompt body (see Step 6 envelope). The integration test
+`tests/scripts/test-from-plan-pre-sprint-chain.py` covers everything
+up to but not including the `Task` dispatch.
+
+Sprint 4 demo: in a project where `.council/henka-register.jsonl`
+contains an open `change_origin: active` `impact_level: high-risk`
+record (status `classified` or `assessed`), the classifier returns
+`course-correction` with `sprint` set to the henka's `sprint_context`.
+Persist with `--route course-correction --sprint N`; the position
+paper lands at `.council/proposed/position-paper-sprint-NN-<ts>.md`.
+The Orchestrator then issues
+`Task: /henkaten-council:council-review --consider <persisted-path>`;
+council-review's Step R0.5 verifies the body's SHA-256 against the
+frontmatter's `plan_sha256` before fan-out. The integration test
+`tests/scripts/test-from-plan-course-correction-chain.py` exercises
+classify → persist → append-decision; the council-review dispatch
+itself is a runtime `Task` invocation and is not unit-tested.
 
 ---
 
