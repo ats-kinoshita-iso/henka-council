@@ -1,5 +1,54 @@
 # Changelog
 
+## v0.1.2 — 2026-05-20
+
+Plugin-packaging readiness pass. Makes henka-council installable via the
+Claude Code marketplace flow on parity with `trine-eval`. No behavioral
+changes to agents, scripts, schemas, or the governance protocol — all
+changes are packaging, hook auto-registration, and documentation.
+
+### Added
+
+- **`.claude-plugin/marketplace.json`** — single-repo marketplace declaration
+  with `source: "./"` so the repo can be added directly as a plugin
+  marketplace via `/plugin marketplace add <git-url>` and the plugin
+  installed via `/plugin install henkaten-council@henkaten-council`.
+- **`hooks/hooks.json`** — plugin-level hook manifest that auto-registers
+  the four required hooks (PreToolUse × 2, PostToolUse, Stop) at install
+  time. Users no longer need to hand-edit `.claude/settings.local.json`
+  for the standard marketplace install path. Bash variants are canonical;
+  the PowerShell parity scripts in `hooks/win/` remain as documented
+  fallback for hosts without bash.
+
+### Changed
+
+- **`.claude-plugin/plugin.json`** — dropped the explicit `skills` and
+  `agents` arrays. They were incomplete (listed 1 of 7 skills and 2 of 7
+  agents), which would have masked five skills and five agents at install
+  time. Claude Code now auto-discovers from the `skills/` and `agents/`
+  directories, matching trine-eval's manifest pattern. Also converted
+  `author` from string form to object form for consistency.
+- **`skills/council-kickoff/SKILL.md` Step 1d** — added Step 1d.0
+  (auto-registration check) that passes when
+  `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` exists and declares all four
+  required matchers. The existing manual registration snippets in
+  1d.1 / 1d.2 / 1d.3 are now framed as the fallback path for direct-path
+  installs or pure-PowerShell Windows hosts. Step 1d.3's fail condition
+  now requires both auto-registration absent and manual registration absent.
+- **`README.md` Install section** — Option A now describes the marketplace
+  flow (`/plugin marketplace add` + `/plugin install …@…`). The previous
+  single-step `/plugin install henkaten-council` instruction was incorrect:
+  no public registry entry existed to resolve.
+- **`README.md` Hook Installation section** — added preamble noting that
+  hooks auto-register via the marketplace install path; the manual snippet
+  is now framed as a fallback.
+
+### Fixed
+
+- **`README.md` license footer** — said `MIT`; the project actually ships
+  under Apache-2.0 (LICENSE file is Apache-2.0, and `plugin.json` was
+  already correct). Footer updated to match.
+
 ## v0.1.1 — 2026-05-12
 
 ### Fixed

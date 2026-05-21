@@ -1,0 +1,14 @@
+{
+  "name": "henkaten-council",
+  "owner": {
+    "name": "Atsushi Kinoshita"
+  },
+  "plugins": [
+    {
+      "name": "henkaten-council",
+      "source": "./",
+      "description": "Henkaten Council plugin for Claude Code — governance layer that orchestrates change-point detection, autonomous decision audit, and continuous improvement across trine-eval sprints.",
+      "version": "0.1.2"
+    }
+  ]
+}

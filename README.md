@@ -6,6 +6,17 @@ harness. The council detects change points (henkaten), audits autonomous
 decisions, manages a dynamic autonomy floor, and enforces the andon protocol
 across sprints.
 
+> **A note on the name.** *henka* (変化) means "change"; *henkaten* (変化点) is
+> the specific Toyota Production System term for a "change point" — the concept
+> this plugin is built around. The repo got the shorter `henka-council` for URL
+> brevity, but the plugin identifier, the skill namespace
+> (`/henkaten-council:...`), and every in-code reference use the full
+> `henkaten-council`. The contraction is deliberate and documented in
+> [`docs/phase-0-proposal.md`](docs/phase-0-proposal.md). Internally the
+> plugin also distinguishes *henkaten* (変化点 — passive, emerged) from
+> *henkoten* (変更点 — active, deliberately initiated) on every change-point
+> record, but uses "henkaten" as the umbrella name.
+
 ---
 
 ## What it Does
@@ -35,24 +46,30 @@ Claude Code skill system. Each sprint, the council:
 
 ## Install
 
-### Option A — Plugin Registry (Recommended)
+### Option A — Marketplace (Recommended)
 
-In Claude Code, run:
+This repository ships its own single-plugin marketplace manifest
+(`.claude-plugin/marketplace.json`). In Claude Code, add the repo as a
+marketplace, then install the plugin from it:
 
 ```
-/plugin install henkaten-council
+/plugin marketplace add atsushi-kinoshita/henka-council
+/plugin install henkaten-council@henkaten-council
 ```
 
-Claude Code will fetch the plugin, register the skills and agents, and load
-`CLAUDE.md` automatically for all future sessions in the project.
+Claude Code will fetch the plugin, auto-discover the skills and agents
+under `skills/` and `agents/`, auto-register the hooks declared in
+`hooks/hooks.json`, and load `CLAUDE.md` automatically for all future
+sessions in the project.
 
 ### Option B — Direct Path Install
 
-Clone this repository alongside your project and register it:
+Clone this repository and add it as a local marketplace:
 
 ```
 git clone https://github.com/atsushi-kinoshita/henka-council.git
-/plugin install ./henka-council
+/plugin marketplace add ./henka-council
+/plugin install henkaten-council@henkaten-council
 ```
 
 After installation, verify the plugin is active:
@@ -72,9 +89,17 @@ system before the council can prevent append-only log overwrites or enforce
 the reversibility policy. The hooks live in `hooks/` (Bash, for Linux/macOS)
 and `hooks/win/` (PowerShell, for Windows).
 
+> **As of v0.1.2:** hooks auto-register from `hooks/hooks.json` when the
+> plugin is installed via the marketplace flow (Option A above). The kickoff
+> skill's Step 1d.0 detects this case and the manual snippet below is then
+> only a fallback — needed for direct-path installs on Claude Code builds
+> that don't read plugin-level `hooks.json`, or for pure-PowerShell Windows
+> hosts without bash.
+
 When you run `/henkaten-council:council-kickoff` for the first time, the skill
 performs a **hook installation self-check** and refuses to proceed past Step 1d
-if any of the four required hooks are missing.
+if neither auto-registration nor manual registration covers all four required
+hooks.
 
 The full registration snippet is in
 [`skills/council-kickoff/SKILL.md`](skills/council-kickoff/SKILL.md) under
@@ -205,4 +230,4 @@ engine.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Apache-2.0 — see [LICENSE](LICENSE).
