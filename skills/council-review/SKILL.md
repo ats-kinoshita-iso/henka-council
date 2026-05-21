@@ -25,6 +25,14 @@ flags:
       is the SINGLE canonical path to restore the autonomy floor (v2.1
       amendment A5). Requires Level 5 (human-approved) authority — the user
       explicitly invokes this flag; the orchestrator never auto-triggers it.
+  - name: "--consider"
+    description: >
+      Path to a position paper persisted by /henkaten-council:from-plan
+      under .council/proposed/ (filename pattern
+      position-paper-sprint-NN-<ts>.md). When present, council-review
+      treats the paper as the seed for fan-out — each agent reviews the
+      body as a course-correction proposal alongside live state. Mutually
+      exclusive with --restore-autonomy. See Step R0.5.
 ---
 
 # council-review
@@ -67,7 +75,63 @@ context and effective autonomy level.
 If `--restore-autonomy` is present in the invocation, jump directly to
 [Step R4 — Restore Autonomy Floor](#step-r4--restore-autonomy-floor).
 
+If `--consider <path>` is present, continue to Step R0.5.
+
 Otherwise continue to Step R1.
+
+---
+
+## Step R0.5 — Load Position Paper (`--consider`)
+
+*Triggered when `/henkaten-council:from-plan` routed a plan as
+`course-correction` (Sprint 4 of from-plan). The paper has already
+been persisted under `.council/proposed/position-paper-sprint-NN-<ts>.md`
+and a `plan-bridge` decision-log entry citing the body's `plan_sha256`
+has already been appended.*
+
+### R0.5.1 — Validate the Paper
+
+1. Resolve `<path>` against the project root. Abort if the file does
+   not exist or is not under `.council/proposed/`.
+2. Read the file. Strip the frontmatter fence
+   (regex `^---\n.*?\n---\n\n`) and re-hash the remaining UTF-8 bytes
+   with SHA-256.
+3. Compare the digest against the persisted file's `plan_sha256`
+   frontmatter field. A mismatch indicates the body was edited after
+   persistence — log a `change_origin: active` henka with
+   `fourM_axis: Material`, `category: source-material-change`, and
+   surface to the user before fan-out. The user may proceed
+   (acknowledging the edit), abort the review, or re-persist via
+   `/henkaten-council:from-plan` to refresh the audit chain.
+
+### R0.5.2 — Surface to Fan-Out
+
+The paper body becomes a constraint document for the fan-out in
+Step R1. Each agent dispatch envelope (per
+`templates/dispatch-envelope.md`) MUST cite the paper path in its
+`inputs` block. Agents read the paper for context but apply their
+normal review constraints — they do NOT defer to the paper; they
+evaluate it.
+
+Expected agent perspectives:
+
+| Agent | Question to answer |
+|---|---|
+| `architect` | Does the proposed correction preserve structural coherence? Which sprints' contracts are affected? |
+| `scope-guardian` | Does the proposal expand scope beyond `features.json`? Does it rename or reinterpret any feature? |
+| `henkaten-detector` | What henkaten records, if any, does the proposal resolve or supersede? Classify the change_origin. |
+| `retrospective` | Capture as a learning input; do not block on retrospective grounds. |
+
+### R0.5.3 — Continue to Fan-Out
+
+Proceed to Step R1 with the paper attached as fan-out context. The
+remainder of council-review is unchanged: andon handling and
+verification spot-check still apply; findings are presented in Step
+R2; the Step R3 decision-log entry MUST set `decision_type:
+"course-correction-major"` (or `"course-correction-minor"` if the
+agents unanimously agree the proposal is minor and reversible) and
+MUST include the paper path in `affected_files` and the
+`plan_sha256` from the paper's frontmatter in `evidence_cited`.
 
 ---
 
