@@ -101,11 +101,27 @@ Verify that the required hooks are registered in Claude Code's hook system:
 - `hooks/session-stopped-marker.sh` (or `hooks/win/session-stopped-marker.ps1`)
   must be registered as a `Stop` hook.
 
+Two registration paths are supported. Check them in order.
+
+##### 1d.0 — Auto-registration check (preferred path, v0.1.2+)
+
+The plugin ships `hooks/hooks.json` which Claude Code reads at install time
+and registers as plugin-level hooks. Verify by checking that
+`${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` exists and declares all four required
+events: `PreToolUse` with matcher `Write|Edit`, `PreToolUse` with matcher
+`Bash`, `PostToolUse` with matcher `*`, and `Stop`. If all four are present,
+the hook self-check **passes** — proceed to Step 1e.
+
+If `${CLAUDE_PLUGIN_ROOT}` is not resolvable (older Claude Code), or if
+`hooks/hooks.json` is absent (pre-v0.1.2 install, or a direct-path install
+that did not register plugin-level hooks), fall through to the manual
+registration check in 1d.1 / 1d.2.
+
+##### 1d.1 — Manual registration via settings.local.json (Linux/macOS)
+
 Read the target project's `.claude/settings.local.json` (creating an empty
 `{ "permissions": {}, "hooks": {} }` object if absent) and check for a `hooks`
 key with entries pointing at the four hook scripts above.
-
-##### 1d.1 — Registration snippet (Linux/macOS)
 
 If `hooks` is absent or any of the four hooks is missing, surface the following
 copyable JSON to the user as the **exact registration command** (this is what
@@ -167,8 +183,9 @@ log entry format. The four PS1 paths are:
 
 ##### 1d.3 — What to do if hooks are missing
 
-If any of the four hooks is absent from `.claude/settings.local.json`, do NOT
-proceed past Step 1d. Report to the user:
+If Step 1d.0 auto-registration is unavailable **and** any of the four hooks
+is absent from `.claude/settings.local.json`, do NOT proceed past Step 1d.
+Report to the user:
 
 > "Hook `<name>` is not registered. The council cannot enforce append-only
 > log protection without it. Paste the snippet above into your
