@@ -36,7 +36,7 @@
     },
     "decision_type": {
       "type": "string",
-      "description": "Category of decision (e.g. course-correction-minor, course-correction-major, andon-resolution, yokoten-ratification)."
+      "description": "Category of decision (e.g. course-correction-minor, course-correction-major, andon-resolution, yokoten-ratification, plan-bridge). `plan-bridge` is emitted by /henkaten-council:from-plan when a plan-mode artifact is persisted and routed; the evidence_cited array carries the plan body's sha256."
     },
     "decision_outcome": {
       "type": "string",

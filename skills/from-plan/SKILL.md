@@ -63,19 +63,36 @@ Validate that the body is non-empty. If empty, abort with a clear message.
 
 ### Step 2 — Classify intent
 
-**Sprint 2 deliverable.** `scripts/classify-plan-intent.py` (Sprint 2)
-reads `.harness/` and `.council/` state to decide one of:
+Invoke `scripts/classify-plan-intent.py`:
 
-- `bootstrap` — `.harness/` does not exist.
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/scripts/classify-plan-intent.py
+```
+
+The script inspects `.harness/` and `.council/` and emits a single JSON
+object on stdout:
+
+```json
+{"route": "<route>", "sprint": <int|null>, "reason": "<short reason>"}
+```
+
+Routes (evaluated in this order so that a course-correction signal
+overrides an otherwise-pending sprint):
+
+- `bootstrap` — `.harness/` does not exist (or exists without
+  `.council/`, indicating an incomplete kickoff).
+- `course-correction` — `.council/henka-register.jsonl` contains an
+  open `change_origin: active` record flagged `impact_level:
+  high-risk` (status not in `{responded, closed}`); OR the most recent
+  sprint entry in `sprint-state.json` is `FAIL`.
 - `pre-sprint` — both `.harness/` and `.council/` exist;
-  `sprint-state.json` has a pending sprint with no negotiated contract.
-- `course-correction` — both exist; the most recent sprint entry in
-  `sprint-state.json` is `fail`, OR `.council/henka-register.jsonl`
-  contains an open `change_origin: active` record flagged `high-risk`.
+  `current_sprint` is an integer N and
+  `.harness/contracts/sprint-NN.md` is absent.
+- `ambiguous` (exit 2) — none of the above fires. The Orchestrator
+  asks the user which route applies; the user's choice is passed
+  explicitly to `--route` on `scripts/persist-plan.py`.
 
-In Sprint 1 the route is supplied explicitly via `--route` to
-`scripts/persist-plan.py`. The Orchestrator asks the user when
-classification is ambiguous.
+Capture the `route` and `sprint` fields; both feed Step 3.
 
 ### Step 3 — Persist with frontmatter
 
@@ -127,8 +144,9 @@ This skill **never modifies `.claude/settings.local.json` automatically.**
 
 ### Step 5 — Append decision-log entry
 
-**Sprint 2 deliverable.** Append a single entry to
-`.council/decision-log.jsonl` via `scripts/append-decision.py`:
+Append a single entry to `.council/decision-log.jsonl` via
+`scripts/append-decision.py`. Build the entry as a JSON object and
+either write it to a temp file (`--file`) or pipe it on stdin:
 
 ```json
 {
@@ -152,49 +170,68 @@ This skill **never modifies `.claude/settings.local.json` automatically.**
 }
 ```
 
-The `plan-bridge` `decision_type` requires adding an entry to the
-`decision-log-entry.schema.json` enum; that schema amendment is part of
-Sprint 2.
+`decision_type` is a free-form string in
+`schemas/decision-log-entry.schema.json`; `plan-bridge` is listed in
+the description's example set so the type is documented for auditors.
+Sourcing the `plan_sha256` from the persisted file's frontmatter
+(rather than recomputing it) keeps Step 3 and Step 5 in chain.
 
 ### Step 6 — Dispatch
 
-**Sprint 2–4 deliverable per route.** Once persisted and logged, hand off
-to the appropriate downstream skill via `Task`:
+Once persisted and logged, hand off to the appropriate downstream skill
+via `Task`. Each route is wired sprint-by-sprint:
 
-- `bootstrap` → `/trine-eval:harness-kickoff` (Planner reads the staged
-  prompt from `.council/proposed/from-plan-bootstrap.md`), then
-  `/henkaten-council:council-kickoff`.
-- `pre-sprint` → `/trine-eval:harness-sprint NN`, passing the contract
-  seed file path as a non-binding seed for contract negotiation.
-- `course-correction` →
+- `bootstrap` (Sprint 2, wired) → `/trine-eval:harness-kickoff`
+  (Planner reads the staged prompt from
+  `.council/proposed/from-plan-bootstrap.md`), then
+  `/henkaten-council:council-kickoff`. The Orchestrator passes the
+  persisted path as the prompt source; no further argument plumbing is
+  needed because the kickoff skills already discover state from
+  `.council/proposed/`.
+- `pre-sprint` (Sprint 3) → `/trine-eval:harness-sprint NN`, passing
+  the contract-seed file path as a non-binding seed for contract
+  negotiation.
+- `course-correction` (Sprint 4) →
   `/henkaten-council:council-review --consider <persisted-path>`.
 
-Sprint 1 stops after Step 4. The dispatch step is filled in
-sprint-by-sprint as the corresponding routes come online.
+In the current sprint, only the `bootstrap` arm dispatches. If
+classification returns `pre-sprint` or `course-correction`, the
+Orchestrator persists and logs as usual but stops short of dispatch,
+surfacing the persisted path to the user with a note that the
+downstream skill arrives in a later sprint.
 
 ---
 
-## Sprint 1 Scope (this delivery)
+## Sprint Status
 
 Wired:
 
 - Step 1 (locate body) — manual via `--plan-body` argument.
-- Step 3 (persist) — `scripts/persist-plan.py` complete.
-- Step 4 (hook self-check) — same procedure as
-  `council-kickoff` §1d.
+- Step 2 (classify) — `scripts/classify-plan-intent.py` (Sprint 2).
+- Step 3 (persist) — `scripts/persist-plan.py`.
+- Step 4 (hook self-check) — same procedure as `council-kickoff` §1d.
+- Step 5 (decision-log) — `scripts/append-decision.py` with
+  `decision_type: plan-bridge` (Sprint 2).
+- Step 6 (dispatch) — `bootstrap` arm wired (Sprint 2).
 
 Not wired yet:
 
-- Step 2 (classify) — Orchestrator asks the user for `--route`.
-- Step 5 (decision-log) — deferred (waits on the `plan-bridge` enum
-  addition to `decision-log-entry.schema.json`, plus the dispatch
-  context).
-- Step 6 (dispatch) — deferred to Sprints 2–4.
+- Step 6 `pre-sprint` arm — Sprint 3.
+- Step 6 `course-correction` arm — Sprint 4.
 
 Sprint 1 demo: with an empty repo, invoke
 `/henkaten-council:from-plan --route bootstrap --plan-body <path>` →
 `.council/proposed/from-plan-bootstrap.md` is created with valid
 frontmatter and `plan_sha256` matches the body's sha256.
+
+Sprint 2 demo: from any repo state, run
+`python scripts/classify-plan-intent.py` to see the inferred route on
+stdout; then run `persist-plan.py` with that `--route`; then build the
+`plan-bridge` decision-log entry and feed it to
+`scripts/append-decision.py`. The full chain produces a persisted
+artifact, a validated `decision-log.jsonl` entry citing the plan's
+sha256, and (for `bootstrap`) a dispatch hand-off to
+`/trine-eval:harness-kickoff` + `/henkaten-council:council-kickoff`.
 
 ---
 
