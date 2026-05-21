@@ -6,6 +6,17 @@ harness. The council detects change points (henkaten), audits autonomous
 decisions, manages a dynamic autonomy floor, and enforces the andon protocol
 across sprints.
 
+> **A note on the name.** *henka* (変化) means "change"; *henkaten* (変化点) is
+> the specific Toyota Production System term for a "change point" — the concept
+> this plugin is built around. The repo got the shorter `henka-council` for URL
+> brevity, but the plugin identifier, the skill namespace
+> (`/henkaten-council:...`), and every in-code reference use the full
+> `henkaten-council`. The contraction is deliberate and documented in
+> [`docs/phase-0-proposal.md`](docs/phase-0-proposal.md). Internally the
+> plugin also distinguishes *henkaten* (変化点 — passive, emerged) from
+> *henkoten* (変更点 — active, deliberately initiated) on every change-point
+> record, but uses "henkaten" as the umbrella name.
+
 ---
 
 ## What it Does
