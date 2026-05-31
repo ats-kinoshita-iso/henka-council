@@ -1,7 +1,7 @@
 # henkaten-council
 
 A Claude Code plugin that adds a continuous-improvement governance layer on top
-of any project managed by the [trine-eval](https://github.com/trine-eval/trine-eval)
+of any project managed by the [trine-eval](https://github.com/ats-kinoshita-iso/trine-eval)
 harness. The council detects change points (henkaten), audits autonomous
 decisions, manages a dynamic autonomy floor, and enforces the andon protocol
 across sprints.
@@ -53,7 +53,7 @@ This repository ships its own single-plugin marketplace manifest
 marketplace, then install the plugin from it:
 
 ```
-/plugin marketplace add atsushi-kinoshita/henka-council
+/plugin marketplace add ats-kinoshita-iso/henka-council
 /plugin install henkaten-council@henkaten-council
 ```
 
@@ -67,7 +67,7 @@ sessions in the project.
 Clone this repository and add it as a local marketplace:
 
 ```
-git clone https://github.com/atsushi-kinoshita/henka-council.git
+git clone https://github.com/ats-kinoshita-iso/henka-council.git
 /plugin marketplace add ./henka-council
 /plugin install henkaten-council@henkaten-council
 ```
@@ -230,4 +230,4 @@ engine.
 
 ## License
 
-Apache-2.0 — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).
