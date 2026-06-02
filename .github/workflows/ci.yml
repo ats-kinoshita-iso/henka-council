@@ -56,6 +56,9 @@ jobs:
       - name: Measure projection cost (advisory)
         run: python scripts/measure-projection-cost.py --ci
 
+      - name: Run Stage 4 pattern_type routing consistency test
+        run: python tests/test-stage4-routing.py
+
       - name: Validate CI YAML (self-check)
         run: |
           python -c "

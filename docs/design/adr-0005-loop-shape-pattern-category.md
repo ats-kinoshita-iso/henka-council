@@ -60,6 +60,15 @@ gains an optional `pattern_type` front-matter field that declares which
 standard-work array a Stage 4 ratification updates, so the existing
 walkthrough machinery routes correctly without needing to inspect content.
 
+*Implementation note (issue #9 follow-up):* this routing is realized in
+`skills/council-autorun/SKILL.md` § "Stage 4 — Ratify Prompt and Post-Ratify
+Actions": on ratify, Stage 4 reads `pattern_type` and appends the entry to the
+named `standard-work[]` array (default `procedure`). The discriminator is the
+structured field, so no free-text content parsing is required — but the switch
+must be present for the "routes correctly" claim to hold. It was originally
+documented on the position paper but not read by the skill; that gap is now
+closed and guarded by `tests/test-stage4-routing.py`.
+
 The retrospective agent (`agents/retrospective.md`) and the PDCA template
 (`templates/retrospective-pdca.md`) are updated to note that loop-shape
 candidates can be surfaced in the Act phase alongside other standard-work

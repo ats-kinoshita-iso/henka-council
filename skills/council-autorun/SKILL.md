@@ -597,7 +597,27 @@ types `yes` or `no`.
 
 **On `yes` (ratified):**
 
-1. Apply the proposed change immediately.
+1. **Apply the proposed change, routing any standard-work update by `pattern_type`.**
+   Read the optional `pattern_type` front-matter field from the position paper.
+   When the change updates `.council/standard-work.json`, append the ratified
+   entry to the array named by `pattern_type` — defaulting to `procedure` when
+   the field is absent or unrecognized:
+
+   | `pattern_type` | `standard-work.json` array | required item fields |
+   |---|---|---|
+   | `procedure` *(default)* | `procedures[]` | `procedure_id`, `name`, `steps` |
+   | `failure-pattern` | `failure_patterns[]` | `pattern_id`, `description`, `mitigation` |
+   | `evaluation-improvement` | `evaluation_improvements[]` | `improvement_id`, `description` |
+   | `workflow-note` | `workflow_notes[]` | `note_id`, `description` |
+   | `loop-shape` | `loop_shapes[]` | `shape_id`, `name`, `problem`, `forces`, `solution`, `consequences`, `evidence_sprints`, `status` |
+
+   The appended entry MUST validate against `schemas/standard-work.schema.json`
+   for the target array; if it does not, treat it as a ratification error — do
+   not write a malformed entry, halt, and surface the schema violation. After a
+   successful append, update `standard-work.json`'s `updated_at`, `updated_by`,
+   and `ratified_decision_id: DEC-{NNNN}`. A decision that does not touch
+   `standard-work.json` (e.g. an `irreversible-action` approval, with
+   `pattern_type` omitted) applies its change directly, with no array routing.
 2. Commit using this message pattern: `DEC-{NNNN}: {description}`.
 3. **Move** the position paper from `.council/proposed/` to
    `.council/proposed/archive/DEC-{NNNN}.md` (or the final revision filename
