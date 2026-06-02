@@ -75,18 +75,19 @@ If `.council/` already exists:
 Collect the following before writing any configuration:
 
 - **Project name**: read from `package.json`, `pyproject.toml`, or ask the user.
-- **Project type**: infer from file structure (e.g. `package.json` → `javascript`,
-  `pyproject.toml` → `python`, `go.mod` → `go`, `Cargo.toml` → `rust`). Default:
-  `unknown`. **Note:** `.council/config.json`'s `project_type` is the language/
-  toolchain context for council reporting (e.g. `python`). This is distinct from
-  `.harness/config.json`'s `project_type`, which is the trine-eval *rubric* type
-  (e.g. `cli-tool`, `web-app`, `api-service`). It is normal and expected for
-  these two values to differ — `cli-tool` describes how trine-eval grades the
-  project, `python` describes its toolchain. The kickoff skill must not overwrite
-  the harness-side value.
+  This becomes `target_project` in `.council/config.json` (Step 2).
+- **Project type / toolchain**: infer from file structure (e.g. `package.json` →
+  `javascript`, `pyproject.toml` → `python`, `go.mod` → `go`, `Cargo.toml` →
+  `rust`). **Note:** this is *not* stored in `.council/config.json` — the
+  council-config schema has no such field. Toolchain context lives only on the
+  harness side: `.harness/config.json`'s `project_type` is the trine-eval
+  *rubric* type (e.g. `cli-tool`, `web-app`, `api-service`). It is normal for the
+  toolchain (`python`) and the rubric (`cli-tool`) to differ; the kickoff skill
+  must not overwrite the harness-side value.
 - **Council agents to activate**: default to the four core agents
-  (`orchestrator`, `architect`, `scope-guardian`, `henkaten-detector`).
-  Ask if the user wants to enable optional agents (`qa-regression`, `rag-source`).
+  (`orchestrator`, `architect`, `scope-guardian`, `henkaten-detector`). These are
+  recorded in `.council/council-manifest.json` (Step 3). Ask if the user wants to
+  enable optional agents (`qa-regression`, `rag-source`).
 
 #### 1d. Hook installation self-check
 
@@ -237,19 +238,10 @@ skip if already present and idempotent mode is active):
 
 ```json
 {
-  "project_name": "<detected or user-provided>",
-  "project_type": "<detected>",
-  "council_agents": [
-    "orchestrator",
-    "architect",
-    "scope-guardian",
-    "henkaten-detector"
-  ],
-  "autonomy_levels": {
-    "default": 4
-  },
+  "council_version": "<plugin version, e.g. 0.1.2>",
+  "target_project": "<detected or user-provided>",
+  "autonomy_level": 4,
   "review_frequency": "every-sprint",
-  "henkaten_taxonomy_version": "2.0",
   "andon_takt_seconds": 600,
   "dynamic_autonomy_thresholds": {
     "andon_stop_distinct_originators_required": 2,
@@ -261,6 +253,11 @@ skip if already present and idempotent mode is active):
 
 Key values to note:
 
+- `council_version` is the plugin version (e.g. `0.1.2`); `target_project` is
+  the project name gathered in Step 1c. The agent roster lives in
+  `council-manifest.json` (Step 3), not here, and the toolchain `project_type`
+  is harness-side (`.harness/config.json`) — neither belongs in
+  `council-config` (the schema is `additionalProperties: false`).
 - `andon_takt_seconds: 600` — raised from 300 per v2.1 amendment A6. This is
   the maximum wall-clock seconds the Orchestrator waits for swarm agents to
   respond to an `andon_signal: alert` before timing out and escalating.
@@ -280,39 +277,56 @@ Write `.council/council-manifest.json` (idempotent):
 
 ```json
 {
-  "council_id": "COUNCIL-0001",
-  "project_name": "<same as config>",
-  "trigger_type": "kickoff",
-  "status": "assembled",
+  "manifest_version": "<plugin version, e.g. 0.1.2>",
+  "created_at": "<ISO-8601-now>",
+  "plugin_version": "<plugin version, e.g. 0.1.2>",
+  "council_state_path": ".council/",
+  "active_sprint": null,
   "agents": [
     {
-      "name": "orchestrator",
-      "role": "coordinator",
-      "level": 4,
-      "agent_file": "agents/orchestrator.md"
+      "agent_id": "orchestrator",
+      "agent_file": "agents/orchestrator.md",
+      "autonomy_level": 4,
+      "status": "active",
+      "context": "inherit",
+      "tools": ["Read", "Glob", "Grep", "Bash", "Write", "Task"],
+      "in_default_fanout": true
     },
     {
-      "name": "architect",
-      "role": "coherence-reviewer",
-      "level": 2,
-      "agent_file": "agents/architect.md"
+      "agent_id": "architect",
+      "agent_file": "agents/architect.md",
+      "autonomy_level": 2,
+      "status": "active",
+      "context": "fork",
+      "tools": ["Read", "Glob", "Grep"],
+      "in_default_fanout": true
     },
     {
-      "name": "scope-guardian",
-      "role": "scope-integrity",
-      "level": 2,
-      "agent_file": "agents/scope-guardian.md"
+      "agent_id": "scope-guardian",
+      "agent_file": "agents/scope-guardian.md",
+      "autonomy_level": 2,
+      "status": "active",
+      "context": "fork",
+      "tools": ["Read", "Glob", "Grep"],
+      "in_default_fanout": true
     },
     {
-      "name": "henkaten-detector",
-      "role": "change-point-classifier",
-      "level": 1,
-      "agent_file": "agents/henkaten-detector.md"
+      "agent_id": "henkaten-detector",
+      "agent_file": "agents/henkaten-detector.md",
+      "autonomy_level": 1,
+      "status": "active",
+      "context": "fork",
+      "tools": ["Read", "Glob", "Grep"],
+      "in_default_fanout": true
     }
-  ],
-  "created_at": "<ISO-8601-now>"
+  ]
 }
 ```
+
+The agent `role`/`name` labels from earlier drafts are not part of the schema;
+the manifest keys an agent by `agent_id` and records its `autonomy_level` and
+`status`. `context`, `tools`, and `in_default_fanout` are optional but
+recommended (they mirror the agent contracts).
 
 Schema reference: `schemas/council-manifest.schema.json`
 
@@ -349,17 +363,27 @@ If `.council/audit-log.jsonl` does not exist: create an empty file. The
 
 ### Step 5 — Write `.council/standard-work.json`
 
-Write `.council/standard-work.json` with a seed based on project type
-(idempotent):
+Write `.council/standard-work.json` with a seed baseline (idempotent). The
+schema requires a non-empty `procedures` array (see the negative fixture
+`tests/schemas/standard-work/invalid/empty-procedures.json`), so seed one
+bootstrap procedure:
 
 ```json
 {
-  "version": "1.0",
-  "project_type": "<detected>",
-  "last_updated": "<ISO-8601-now>",
-  "procedures": [],
-  "known_henkaten_patterns": [],
-  "yokoten_entries": []
+  "version": "1.0.0",
+  "updated_at": "<ISO-8601-now>",
+  "updated_by": "council-kickoff",
+  "procedures": [
+    {
+      "procedure_id": "PROC-001",
+      "name": "Council baseline kickoff",
+      "steps": [
+        "Read .harness/spec.md and .harness/sprints.json to establish sprint context",
+        "Verify the .council/ governance baseline exists (config, manifest, append-only logs, state)",
+        "Run /henkaten-council:council-autorun per sprint to fan out the council review"
+      ]
+    }
+  ]
 }
 ```
 
