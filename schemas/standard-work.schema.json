@@ -198,7 +198,30 @@
             "description": "Lifecycle status. 'candidate' = proposed but not yet through nemawashi. 'ratified' = approved via 4-stage walkthrough. 'deprecated' = retired but kept for audit traceability."
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "description": "A ratified loop-shape must carry the DEC id of the nemawashi decision that ratified it.",
+            "if": {
+              "required": ["status"],
+              "properties": { "status": { "const": "ratified" } }
+            },
+            "then": {
+              "required": ["ratified_decision_id"],
+              "properties": { "ratified_decision_id": { "type": "string" } }
+            }
+          },
+          {
+            "description": "A candidate loop-shape has not been ratified, so it must not carry a ratified_decision_id (null or absent only).",
+            "if": {
+              "required": ["status"],
+              "properties": { "status": { "const": "candidate" } }
+            },
+            "then": {
+              "properties": { "ratified_decision_id": { "type": "null" } }
+            }
+          }
+        ]
       }
     }
   },

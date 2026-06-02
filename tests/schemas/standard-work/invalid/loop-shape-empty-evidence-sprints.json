@@ -1,0 +1,23 @@
+{
+  "version": "1.1.0",
+  "updated_at": "2026-05-13T22:35:00Z",
+  "procedures": [
+    {
+      "procedure_id": "PROC-001",
+      "name": "Sprint kickoff",
+      "steps": ["Read spec", "Draft contract", "Await approval"]
+    }
+  ],
+  "loop_shapes": [
+    {
+      "shape_id": "probe-campaign",
+      "name": "Probe Campaign",
+      "problem": "Complex-class work where the right path is not knowable up front.",
+      "forces": "Need for forward progress vs. risk of committing to one unproven path.",
+      "solution": "Launch two or three safe-to-fail probes in parallel, then converge or pivot.",
+      "consequences": "Costs parallel effort; surfaces the viable path faster than serial guessing.",
+      "evidence_sprints": [],
+      "status": "candidate"
+    }
+  ]
+}
