@@ -3,13 +3,36 @@
 # Exit 0 always (stop hooks cannot block).
 # Requires PowerShell 7+ (pwsh).
 
-# Env-var override for testability; also accept legacy COUNCIL_PROGRESS_FILE
+# Resolve the project root for anchoring the progress-marker path.
+# Priority: CLAUDE_PROJECT_DIR (set by Claude Code at hook-fire time) ->
+# nearest ancestor of the start dir containing a .git marker -> start dir.
+# Prevents a nested .council/.harness/progress.md when the session cwd is a
+# subdirectory of the project root (issue #18).
+function Get-CouncilProjectRoot {
+    param([string]$Start = (Get-Location).Path)
+    if ($env:CLAUDE_PROJECT_DIR) {
+        return ($env:CLAUDE_PROJECT_DIR.TrimEnd('/', '\'))
+    }
+    $dir = $Start
+    while (-not [string]::IsNullOrEmpty($dir)) {
+        if (Test-Path (Join-Path $dir '.git')) {
+            return $dir
+        }
+        $parent = Split-Path $dir -Parent
+        if ([string]::IsNullOrEmpty($parent) -or $parent -eq $dir) { break }
+        $dir = $parent
+    }
+    return $Start
+}
+
+# Env-var override for testability; also accept legacy COUNCIL_PROGRESS_FILE.
+# Default path is anchored to the project root below.
 $TargetFile = if ($env:SESSION_MARKER_PATH) {
     $env:SESSION_MARKER_PATH
 } elseif ($env:COUNCIL_PROGRESS_FILE) {
     $env:COUNCIL_PROGRESS_FILE
 } else {
-    '.harness/progress.md'
+    ''
 }
 
 # Read and discard stdin
@@ -17,6 +40,11 @@ try {
     $null = [Console]::In.ReadToEnd()
 } catch {
     # ignore
+}
+
+# Anchor the progress-marker path to the project root unless an explicit override was given.
+if (-not $TargetFile) {
+    $TargetFile = (Get-CouncilProjectRoot).TrimEnd('/', '\') + '/.harness/progress.md'
 }
 
 # Generate UTC timestamp

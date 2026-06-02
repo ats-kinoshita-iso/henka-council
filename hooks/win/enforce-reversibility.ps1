@@ -13,12 +13,30 @@ $IrreversiblePatterns = @(
     'git filter-branch'
 )
 
-# Env-var override for testability
-$AutonomyFile = if ($env:EFFECTIVE_AUTONOMY_PATH) {
-    $env:EFFECTIVE_AUTONOMY_PATH
-} else {
-    '.council/state/effective-autonomy.json'
+# Resolve the project root for anchoring the effective-autonomy path.
+# Priority: CLAUDE_PROJECT_DIR (set by Claude Code at hook-fire time) ->
+# nearest ancestor of the start dir containing a .git marker -> start dir.
+# Without this, a shifted cwd makes the file unreadable and the hook silently
+# falls back to the default level (issue #18).
+function Get-CouncilProjectRoot {
+    param([string]$Start = (Get-Location).Path)
+    if ($env:CLAUDE_PROJECT_DIR) {
+        return ($env:CLAUDE_PROJECT_DIR.TrimEnd('/', '\'))
+    }
+    $dir = $Start
+    while (-not [string]::IsNullOrEmpty($dir)) {
+        if (Test-Path (Join-Path $dir '.git')) {
+            return $dir
+        }
+        $parent = Split-Path $dir -Parent
+        if ([string]::IsNullOrEmpty($parent) -or $parent -eq $dir) { break }
+        $dir = $parent
+    }
+    return $Start
 }
+
+# Env-var override for testability; default path is anchored to the project root below.
+$AutonomyFile = $env:EFFECTIVE_AUTONOMY_PATH
 
 # Read envelope from stdin
 try {
@@ -44,6 +62,12 @@ $toolName = if ($envelope.tool_name) { $envelope.tool_name } else { '' }
 # Only inspect Bash tool calls
 if ($toolName -ne 'Bash') {
     exit 0
+}
+
+# Anchor the autonomy-state path to the project root unless an explicit override was given.
+if (-not $AutonomyFile) {
+    $cwd = if ($envelope.cwd) { $envelope.cwd } else { (Get-Location).Path }
+    $AutonomyFile = (Get-CouncilProjectRoot -Start $cwd).TrimEnd('/', '\') + '/.council/state/effective-autonomy.json'
 }
 
 # Read effective autonomy level; default to 4 if file absent

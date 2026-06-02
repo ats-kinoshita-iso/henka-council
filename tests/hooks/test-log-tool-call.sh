@@ -6,6 +6,7 @@
 set -uo pipefail
 
 HOOK="hooks/log-tool-call.sh"
+REPO="$(pwd)"
 ERRORS=0
 
 pass() { echo "PASS: $1"; }
@@ -139,6 +140,33 @@ if AUDIT_LOG_PATH="$AUDIT_LOG_TEMP3" bash "$HOOK" <<< "$envelope"; then
     fi
 else
     fail "Hook failed when creating subdirectory"
+fi
+
+# --- Test 4: Path anchoring via CLAUDE_PROJECT_DIR (issue #18 misroute regression) ---
+# With no AUDIT_LOG_PATH override and the tool-call cwd shifted into <root>/.council,
+# the audit log must land at <root>/.council/audit-log.jsonl, NOT a nested
+# <root>/.council/.council/audit-log.jsonl.
+PROJ4="${TMPDIR_TEST}/proj4"
+mkdir -p "$PROJ4/.council"
+envelope='{"tool_name":"Bash","tool_args":{"command":"git status"},"cwd":"'"$PROJ4"'/.council","session_id":"s4","agent_id":"orchestrator"}'
+echo "$envelope" | CLAUDE_PROJECT_DIR="$PROJ4" AUDIT_LOG_PATH="" bash "$REPO/$HOOK" >/dev/null 2>&1
+if [[ -f "$PROJ4/.council/audit-log.jsonl" && ! -d "$PROJ4/.council/.council" ]]; then
+    pass "Audit log anchored to <root>/.council via CLAUDE_PROJECT_DIR (no nested .council/.council)"
+else
+    fail "Audit log misrouted under CLAUDE_PROJECT_DIR (nested .council/.council or canonical path missing)"
+fi
+
+# --- Test 5: Path anchoring via .git walk-up when CLAUDE_PROJECT_DIR is unset ---
+# Fallback path: walk up from the tool-call cwd to the nearest .git marker.
+PROJ5="${TMPDIR_TEST}/proj5"
+mkdir -p "$PROJ5/.council"
+: > "$PROJ5/.git"   # worktree-style .git file marker at the project root
+envelope='{"tool_name":"Bash","tool_args":{"command":"ls"},"cwd":"'"$PROJ5"'/.council","session_id":"s5","agent_id":"orchestrator"}'
+( unset CLAUDE_PROJECT_DIR; echo "$envelope" | AUDIT_LOG_PATH="" bash "$REPO/$HOOK" ) >/dev/null 2>&1
+if [[ -f "$PROJ5/.council/audit-log.jsonl" && ! -d "$PROJ5/.council/.council" ]]; then
+    pass "Audit log anchored via .git walk-up when CLAUDE_PROJECT_DIR unset"
+else
+    fail "Audit log walk-up anchoring failed (nested .council/.council or canonical path missing)"
 fi
 
 # --- Results ---

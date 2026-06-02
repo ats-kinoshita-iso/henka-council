@@ -5,8 +5,10 @@
 
 set -uo pipefail
 
-# Env-var override for testability
-AUTONOMY_FILE="${EFFECTIVE_AUTONOMY_PATH:-.council/state/effective-autonomy.json}"
+# Env-var override for testability; the default path is anchored to the project root
+# below (once the envelope cwd is known) so the autonomy level is read from the canonical
+# .council/state/ location even when the tool-call cwd is a subdirectory (issue #18).
+AUTONOMY_FILE="${EFFECTIVE_AUTONOMY_PATH:-}"
 
 # Patterns that indicate irreversible operations
 IRREVERSIBLE_PATTERNS=(
@@ -50,11 +52,40 @@ except Exception:
     fi
 }
 
+# Resolve the project root for anchoring the effective-autonomy path.
+# Priority: CLAUDE_PROJECT_DIR (set by Claude Code at hook-fire time) ->
+# nearest ancestor of the start dir containing a .git marker -> start dir.
+# Without this, a shifted cwd makes the file unreadable and the hook silently
+# falls back to the default level (issue #18).
+_council_project_root() {
+    local start="${1:-$PWD}" dir parent
+    if [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then
+        printf '%s' "${CLAUDE_PROJECT_DIR%/}"
+        return 0
+    fi
+    dir="${start%/}"
+    while [[ -n "$dir" && "$dir" != "/" ]]; do
+        if [[ -e "$dir/.git" ]]; then
+            printf '%s' "$dir"
+            return 0
+        fi
+        parent=$(dirname "$dir")
+        [[ "$parent" == "$dir" ]] && break
+        dir="$parent"
+    done
+    printf '%s' "${start%/}"
+}
+
 tool_name=$(_json_get "$envelope" ".tool_name")
 
 # Only inspect Bash tool calls
 if [[ "$tool_name" != "Bash" ]]; then
     exit 0
+fi
+
+# Anchor the autonomy-state path to the project root unless an explicit override was given.
+if [[ -z "$AUTONOMY_FILE" ]]; then
+    AUTONOMY_FILE="$(_council_project_root "$(_json_get "$envelope" ".cwd")")/.council/state/effective-autonomy.json"
 fi
 
 # Read effective autonomy level; default to 4 if file absent
