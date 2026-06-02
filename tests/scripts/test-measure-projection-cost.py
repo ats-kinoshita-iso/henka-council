@@ -9,6 +9,11 @@ Exercises:
      estimation (uses a self-contained fixture)
   6. --repo-root pointing at a fixture with known files produces a predictable
      non-zero total
+  7. Over budget WITHOUT --strict still exits 0 (over_budget: true)
+  8. --ci emits a ::warning:: annotation when over budget
+  9. --ci --json still emits the ::warning:: annotation (not dropped in JSON mode)
+ 10. Entry paths are normalized to forward slashes (no backslash)
+ 11. A UTF-8 BOM in plugin.json / CLAUDE.md is tolerated (no crash)
 
 Exit codes:
     0  — all assertions passed
@@ -69,7 +74,7 @@ def _make_fixture_repo(
 
 
 def main() -> int:
-    total = 6
+    total = 11
     failures: list[str] = []
 
     # -----------------------------------------------------------------------
@@ -233,6 +238,129 @@ def main() -> int:
                 failures.append(msg)
         except (json.JSONDecodeError, KeyError) as exc:
             msg = f"predictable-total fixture run failed: {exc}"
+            _fail(n, total, msg)
+            failures.append(msg)
+
+    # -----------------------------------------------------------------------
+    # Assertion 7: over budget WITHOUT --strict exits 0 (over_budget true)
+    # -----------------------------------------------------------------------
+    n = 7
+    r = run(["--json", "--budget", "0"])
+    if r.returncode == 0:
+        try:
+            data = json.loads(r.stdout)
+            if data.get("over_budget") is True:
+                _pass(n, total, "over budget without --strict exits 0 (over_budget=true)")
+            else:
+                msg = f"over_budget not true with --budget 0: {data!r}"
+                _fail(n, total, msg)
+                failures.append(msg)
+        except json.JSONDecodeError as exc:
+            msg = f"--json --budget 0 not parseable: {exc}"
+            _fail(n, total, msg)
+            failures.append(msg)
+    else:
+        msg = f"over budget without --strict exited {r.returncode} (expected 0)"
+        _fail(n, total, msg)
+        failures.append(msg)
+
+    # -----------------------------------------------------------------------
+    # Assertion 8: --ci emits a ::warning:: annotation when over budget
+    # -----------------------------------------------------------------------
+    n = 8
+    r = run(["--ci", "--budget", "0"])
+    if r.returncode == 0 and "::warning::" in r.stdout:
+        _pass(n, total, "--ci over budget emits ::warning:: annotation")
+    else:
+        msg = (
+            f"--ci --budget 0: rc={r.returncode}, "
+            f"warning_present={'::warning::' in r.stdout}; stdout={r.stdout[-120:]!r}"
+        )
+        _fail(n, total, msg)
+        failures.append(msg)
+
+    # -----------------------------------------------------------------------
+    # Assertion 9: --ci --json still emits ::warning:: (annotation not dropped)
+    # -----------------------------------------------------------------------
+    n = 9
+    r = run(["--ci", "--json", "--budget", "0"])
+    has_warning = "::warning::" in r.stdout
+    json_part = r.stdout.split("::warning::", 1)[0].strip()
+    json_ok = False
+    try:
+        json_ok = json.loads(json_part).get("over_budget") is True
+    except json.JSONDecodeError:
+        json_ok = False
+    if r.returncode == 0 and has_warning and json_ok:
+        _pass(n, total, "--ci --json emits ::warning:: alongside valid JSON")
+    else:
+        msg = (
+            f"--ci --json: rc={r.returncode}, has_warning={has_warning}, "
+            f"json_ok={json_ok}"
+        )
+        _fail(n, total, msg)
+        failures.append(msg)
+
+    # -----------------------------------------------------------------------
+    # Assertion 10: nested entry paths are normalized to forward slashes
+    # -----------------------------------------------------------------------
+    n = 10
+    with tempfile.TemporaryDirectory() as td:
+        tmpdir = pathlib.Path(td)
+        _make_fixture_repo(
+            tmpdir,
+            claude_md_text="root file\n",
+            skill_text="skill body\n",
+            agent_text="agent body\n",
+        )
+        r = run(["--repo-root", str(tmpdir), "--json"])
+        try:
+            data = json.loads(r.stdout)
+            backslashed = [f["path"] for f in data["files"] if "\\" in f["path"]]
+            has_nested = any(f["path"] == "skills/test/SKILL.md" for f in data["files"])
+            if not backslashed and has_nested:
+                _pass(n, total, "nested entry paths use forward slashes")
+            else:
+                msg = f"path normalization: backslashed={backslashed}, has_nested={has_nested}"
+                _fail(n, total, msg)
+                failures.append(msg)
+        except (json.JSONDecodeError, KeyError) as exc:
+            msg = f"path-normalization fixture run failed: {exc}"
+            _fail(n, total, msg)
+            failures.append(msg)
+
+    # -----------------------------------------------------------------------
+    # Assertion 11: a UTF-8 BOM in plugin.json / CLAUDE.md is tolerated
+    # -----------------------------------------------------------------------
+    n = 11
+    with tempfile.TemporaryDirectory() as td:
+        tmpdir = pathlib.Path(td)
+        _make_fixture_repo(
+            tmpdir,
+            claude_md_text="root file\n",
+            skill_text="skill body\n",
+            agent_text="agent body\n",
+        )
+        bom = b"\xef\xbb\xbf"
+        for rel in (".claude-plugin/plugin.json", "CLAUDE.md"):
+            p = tmpdir / rel
+            p.write_bytes(bom + p.read_bytes())
+        r = run(["--repo-root", str(tmpdir), "--json"])
+        if r.returncode == 0:
+            try:
+                data = json.loads(r.stdout)
+                if data.get("total_tokens", 0) > 0:
+                    _pass(n, total, "UTF-8 BOM in plugin.json / CLAUDE.md tolerated")
+                else:
+                    msg = f"BOM fixture produced no tokens: {data!r}"
+                    _fail(n, total, msg)
+                    failures.append(msg)
+            except json.JSONDecodeError as exc:
+                msg = f"BOM fixture --json not parseable: {exc}"
+                _fail(n, total, msg)
+                failures.append(msg)
+        else:
+            msg = f"BOM fixture crashed: rc={r.returncode}; stderr={r.stderr.strip()!r}"
             _fail(n, total, msg)
             failures.append(msg)
 

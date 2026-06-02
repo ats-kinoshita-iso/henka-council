@@ -52,7 +52,7 @@ def discover_always_projected_files(repo_root: pathlib.Path) -> list[pathlib.Pat
     if claude_md.exists():
         files.append(claude_md)
     if plugin_manifest.exists():
-        manifest = json.loads(plugin_manifest.read_text(encoding="utf-8"))
+        manifest = json.loads(plugin_manifest.read_text(encoding="utf-8-sig"))
         for relpath in manifest.get("skills", []):
             files.append(repo_root / relpath)
         for relpath in manifest.get("agents", []):
@@ -62,7 +62,7 @@ def discover_always_projected_files(repo_root: pathlib.Path) -> list[pathlib.Pat
 
 def measure_file(path: pathlib.Path) -> tuple[int, str]:
     """Return (token_count, source) for path. Source is 'override' or 'estimate'."""
-    text = path.read_text(encoding="utf-8")
+    text = path.read_text(encoding="utf-8-sig")
     match = _FRONTMATTER_RE.match(text)
     if match:
         override = _COST_OVERRIDE_RE.search(match.group(1))
@@ -144,14 +144,17 @@ def main(argv: Optional[list[str]] = None) -> int:
         print("-" * 75)
         print(f"{'TOTAL':<55} {total:>8}")
         print(f"Budget: {args.budget}; headroom: {args.budget - total} tokens")
-        if over:
-            if args.ci:
-                print(
-                    f"::warning::Projection cost exceeds budget by "
-                    f"{total - args.budget} tokens"
-                )
-            else:
-                print(f"WARNING: over budget by {total - args.budget} tokens")
+        if over and not args.ci:
+            print(f"WARNING: over budget by {total - args.budget} tokens")
+
+    # Emit the GitHub Actions annotation whenever --ci is set and we are over
+    # budget, regardless of --json. Previously this lived only inside the
+    # human-readable branch, so `--ci --json` silently dropped the annotation.
+    if args.ci and over:
+        print(
+            f"::warning::Projection cost exceeds budget by "
+            f"{total - args.budget} tokens"
+        )
 
     if args.strict and over:
         return 1
