@@ -124,9 +124,10 @@ cross-reference list adds `@instructions/stop-conditions.md`.
   that documented it; future drift is caught by schema validation rather
   than discovered by manual grep.
 - The kickoff seed entry now validates against the decision-log schema
-  (three pre-existing latent bugs fixed in passing: `dec_id` →
+  (four pre-existing latent bugs fixed in passing: `dec_id` →
   `decision_id`, `decision_outcome` →  enum-valid, `sprint_context` →
-  integer).
+  integer, and a schema-invalid `linked_henka_id: null` dropped — the
+  schema types that field as `string`, so a `null` value failed validation).
 - The `no-progress` form makes the agent's metacognitive judgment a
   first-class audit signal, which is load-bearing for the "the agent
   decides when it is stuck, the harness decides when it has run out of

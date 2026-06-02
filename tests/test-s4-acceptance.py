@@ -5,7 +5,7 @@ Exercises all six §15.5 assertions against the dummy-project fixture:
   1. scripts/run-verification.py with an allowed command exits 0.
   2. scripts/run-verification.py with a disallowed command exits non-zero
      and emits a rejection message.
-  3. skills/council-autorun/SKILL.md exists and contains all 10 step headings.
+  3. skills/council-autorun/SKILL.md exists and contains all 11 step headings.
   4. instructions/andon-protocol.md contains the verbatim thank-the-puller text.
   5. The dummy-project fixture has valid JSON in .harness/config.json and
      .harness/sprints.json, with >= 2 sprint entries.

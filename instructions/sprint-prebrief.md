@@ -46,7 +46,9 @@ acceptance criteria that may need refinement based on probe results.
 
 No order is visible. Tactical action is premature; stabilization is
 required first. The Orchestrator should NOT execute the sprint as planned
-when this label fires with high confidence; instead it should recommend
+when this label fires with high confidence (operationally, confidence ≥ 0.6 —
+the threshold set in council-autorun Step 1A.6, the single source of truth for
+the numeric cutoff); instead it should recommend
 a stabilization step to the user. **At this stage of the integration the
 council-autorun loop does NOT mechanically halt on `chaotic`** — the
 recommendation is surfaced but the loop continues unless the user
@@ -57,7 +59,7 @@ intervenes. See ADR-0003 for the deliberate non-coupling rationale.
 ## When the Prebrief Is Produced
 
 At sprint entry, after yokoten review (Step 1A.5 of council-autorun) and
-before fan-out (Step 1C). This is Step 1A.6 in
+before trine-eval delegation (Step 1B). This is Step 1A.6 in
 `skills/council-autorun/SKILL.md`. The Orchestrator:
 
 1. Reads the upcoming sprint's contract (`.harness/contracts/sprint-NN.md`),

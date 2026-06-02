@@ -134,7 +134,7 @@ in the council-autorun step heading list.
   `.council/proposed/`, `.council/proposed/archive/`,
   `.council/course-corrections/`, `.council/retrospectives/`,
   `.council/sessions/`, `.council/jishuken/`, `.council/state/`. That
-  is seven artefact directories under `.council/`. The new directory
+  is eight artefact directories under `.council/`. The new directory
   is at the same conceptual level as the others (a category of
   recorded artefact) and should not need consolidation.
 - **Naming deliberately avoids the `sprint_context` collision.** The

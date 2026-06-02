@@ -175,7 +175,7 @@ If the user says `no`, halt and log `user_intervention_requested`.
 | `disagree` | User disputes this agent's perspective fundamentally | Record `{agent}: disagree — [user's stated reason]`. Continue to next agent. Bring to Stage 3. |
 
 All three-handle responses are logged to `.council/audit-log.jsonl` with:
-`{ dec_id, agent_id, stage: 2, handle, reason_if_refine_or_disagree, timestamp }`
+`{ decision_id, agent_id, stage: 2, handle, reason_if_refine_or_disagree, timestamp }`
 
 **Stage 2 completion record:**
 
@@ -277,7 +277,7 @@ Stage 3 and do not proceed to Stage 4.*
 
 ```yaml
 decision_type: course-correction-major
-dec_id: DEC-{NNNN}
+decision_id: DEC-{NNNN}
 nemawashi_walkthrough_version: {N}  # 0 if no Stage 3 revisions; ≥1 after cycles
 reversibility: {reversible | irreversible}
 status: ratified
@@ -302,7 +302,7 @@ sprint_context: {NN}
 
 ```yaml
 decision_type: course-correction-major
-dec_id: DEC-{NNNN}
+decision_id: DEC-{NNNN}
 nemawashi_walkthrough_version: {N}
 reversibility: {reversible | irreversible}
 status: rejected
