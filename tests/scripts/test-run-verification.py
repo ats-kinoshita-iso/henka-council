@@ -68,6 +68,12 @@ def main() -> int:
     failures: list[str] = []
     schema = load_henka_schema()
 
+    # Snapshot whether .council/ already exists (a real council project, or a
+    # dogfooded baseline). Test 7 must fail only if THIS run *creates* it — the
+    # mere presence of .council/ is not a test failure.
+    council_dir = _REPO_ROOT / ".council"
+    council_existed_before = council_dir.exists()
+
     # ------------------------------------------------------------------
     # Test 1: --help exits 0
     # ------------------------------------------------------------------
@@ -175,14 +181,13 @@ def main() -> int:
     # ------------------------------------------------------------------
     # Verify .council/ was NOT created in the repo root
     # ------------------------------------------------------------------
-    council_dir = _REPO_ROOT / ".council"
-    if council_dir.exists():
+    if council_dir.exists() and not council_existed_before:
         failures.append(
             f"Test 7 FAIL: .council/ was created at {council_dir} during tests "
-            "(should be NO-OP when using temp dirs)"
+            "(sub-tests must isolate writes via temp dirs / --henka-output)"
         )
     else:
-        print("Test 7 PASS: .council/ was not created in repo root")
+        print("Test 7 PASS: .council/ was not created by the test run")
 
     # ------------------------------------------------------------------
     # Report
