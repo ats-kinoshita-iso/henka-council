@@ -53,6 +53,9 @@ jobs:
       - name: Run Python projection-cost test
         run: python tests/scripts/test-measure-projection-cost.py
 
+      - name: Run kickoff template schema-validation test
+        run: python tests/test-kickoff-templates.py
+
       - name: Measure projection cost (advisory)
         run: python scripts/measure-projection-cost.py --ci
 
