@@ -58,7 +58,43 @@ else
     pass "Edit on decision-log.jsonl is blocked"
 fi
 
+# --- BLOCK cases: cwd-relative path resolution (issue #18 append-only bypass regression) ---
+# A protected log can be written via a path expressed relative to a shifted cwd. The hook
+# must resolve file_path against cwd before matching, or these evade the guard (exit 0).
+
+# Bare filename written from cwd inside .council/ must block (the confirmed bypass)
+envelope='{"tool_name":"Write","tool_args":{"file_path":"henka-register.jsonl"},"cwd":"/proj/.council","session_id":"test"}'
+if run_hook "$envelope"; then
+    fail "Bare henka-register.jsonl from cwd=/proj/.council should be blocked (append-only bypass)"
+else
+    pass "Bare henka-register.jsonl from cwd=.council is blocked"
+fi
+
+# ./-relative filename from cwd inside .council/ must block
+envelope='{"tool_name":"Write","tool_args":{"file_path":"./decision-log.jsonl"},"cwd":"/proj/.council","session_id":"test"}'
+if run_hook "$envelope"; then
+    fail "./decision-log.jsonl from cwd=/proj/.council should be blocked"
+else
+    pass "./decision-log.jsonl from cwd=.council is blocked"
+fi
+
+# Absolute path to a protected log (cwd elsewhere) must block
+envelope='{"tool_name":"Write","tool_args":{"file_path":"/proj/.council/audit-log.jsonl"},"cwd":"/somewhere/else","session_id":"test"}'
+if run_hook "$envelope"; then
+    fail "Absolute /proj/.council/audit-log.jsonl should be blocked"
+else
+    pass "Absolute path to audit-log.jsonl is blocked"
+fi
+
 # --- ALLOW cases ---
+
+# Same basename but NOT under .council/ is a different file — must NOT over-block
+envelope='{"tool_name":"Write","tool_args":{"file_path":"henka-register.jsonl"},"cwd":"/proj","session_id":"test"}'
+if run_hook "$envelope"; then
+    pass "Bare henka-register.jsonl from project root (not .council) is allowed"
+else
+    fail "henka-register.jsonl at project root should be allowed (it is not the protected file)"
+fi
 
 # Write on a non-protected file must allow
 envelope='{"tool_name":"Write","tool_args":{"file_path":"scripts/append-henka.py"},"cwd":"/tmp","session_id":"test"}'

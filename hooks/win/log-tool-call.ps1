@@ -3,8 +3,31 @@
 # Exit 0 = continue.  (PostToolUse hooks do not block — tool already ran.)
 # Requires PowerShell 7+ (pwsh).
 
-# Env-var override for testability
-$AuditLog = if ($env:AUDIT_LOG_PATH) { $env:AUDIT_LOG_PATH } else { '.council/audit-log.jsonl' }
+# Resolve the project root for anchoring council/harness paths.
+# Priority: CLAUDE_PROJECT_DIR (set by Claude Code at hook-fire time) ->
+# nearest ancestor of the start dir containing a .git marker -> start dir.
+# Prevents a nested .council/.council/ audit log when the tool-call cwd is a
+# subdirectory of the project root (issue #18).
+function Get-CouncilProjectRoot {
+    param([string]$Start = (Get-Location).Path)
+    if ($env:CLAUDE_PROJECT_DIR) {
+        return ($env:CLAUDE_PROJECT_DIR.TrimEnd('/', '\'))
+    }
+    $dir = $Start
+    while (-not [string]::IsNullOrEmpty($dir)) {
+        if (Test-Path (Join-Path $dir '.git')) {
+            return $dir
+        }
+        $parent = Split-Path $dir -Parent
+        if ([string]::IsNullOrEmpty($parent) -or $parent -eq $dir) { break }
+        $dir = $parent
+    }
+    return $Start
+}
+
+# Env-var override for testability; default path is anchored to the project root after
+# the envelope cwd is known (see below).
+$AuditLog = $env:AUDIT_LOG_PATH
 
 # Read envelope from stdin
 try {
@@ -23,6 +46,12 @@ try {
 } catch {
     [Console]::Error.WriteLine("log-tool-call: malformed JSON envelope — audit logging skipped")
     exit 0
+}
+
+# Anchor the audit-log path to the project root unless an explicit override was given.
+if (-not $AuditLog) {
+    $cwd = if ($envelope.cwd) { $envelope.cwd } else { (Get-Location).Path }
+    $AuditLog = (Get-CouncilProjectRoot -Start $cwd).TrimEnd('/', '\') + '/.council/audit-log.jsonl'
 }
 
 $toolName = if ($envelope.tool_name) { $envelope.tool_name } else { 'unknown' }

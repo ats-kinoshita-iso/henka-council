@@ -51,11 +51,24 @@ if [[ "$tool_name" != "Write" && "$tool_name" != "Edit" ]]; then
     exit 0
 fi
 
-# Normalize path: strip leading ./ if present
-file_path="${file_path#./}"
+# Resolve the write target against the tool-call cwd before matching. A path expressed
+# relative to a shifted cwd (e.g. cwd=<root>/.council, file_path=henka-register.jsonl)
+# must still resolve to <root>/.council/henka-register.jsonl. Without this, a bare or
+# ./-relative path slips past the protected-file check — the append-only bypass (issue #18).
+cwd=$(_json_get "$envelope" ".cwd")
+norm_path="${file_path//\\//}"   # backslashes -> forward slashes (Windows envelopes)
+norm_path="${norm_path#./}"      # strip a single leading ./
+cwd="${cwd//\\//}"
+
+case "$norm_path" in
+    /*|[A-Za-z]:/*) abs_path="$norm_path" ;;                       # already absolute (POSIX or Windows drive)
+    *) if [[ -n "$cwd" ]]; then abs_path="${cwd%/}/${norm_path}"; else abs_path="$norm_path"; fi ;;
+esac
 
 for protected in "${PROTECTED_FILES[@]}"; do
-    if [[ "$file_path" == "$protected" || "$file_path" == *"/$protected" ]]; then
+    # Match the cwd-resolved absolute path (catches relative-to-.council evasions) and the
+    # raw normalized path (catches the plain ".council/<log>" form when no cwd is present).
+    if [[ "$abs_path" == "$protected" || "$abs_path" == *"/$protected" || "$norm_path" == "$protected" ]]; then
         echo "BLOCKED: Direct ${tool_name} on append-only log '${file_path}' is forbidden." >&2
         echo "  Approved write paths: scripts/append-henka.py, scripts/append-decision.py" >&2
         exit 1

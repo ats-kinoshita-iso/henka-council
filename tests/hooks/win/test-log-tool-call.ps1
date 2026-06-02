@@ -84,6 +84,40 @@ $env:AUDIT_LOG_PATH = $null
 if ($LASTEXITCODE -eq 0) { Pass "Empty envelope exits 0 (fail open)" }
 else { Fail "Empty envelope should exit 0" }
 
+# --- Test 3: Path anchoring via CLAUDE_PROJECT_DIR (issue #18 misroute regression) ---
+# No AUDIT_LOG_PATH override, tool-call cwd shifted into <root>/.council: the audit log
+# must land at <root>/.council/audit-log.jsonl, not a nested <root>/.council/.council/.
+$Proj3 = Join-Path $TempDir 'proj3'
+New-Item -ItemType Directory -Path (Join-Path $Proj3 '.council') -Force | Out-Null
+$envelope = '{"tool_name":"Bash","tool_args":{"command":"git status"},"cwd":"' + ($Proj3 -replace '\\','/') + '/.council","session_id":"s3","agent_id":"orchestrator"}'
+$env:AUDIT_LOG_PATH = $null
+$env:CLAUDE_PROJECT_DIR = $Proj3
+$envelope | pwsh -NoLogo -NoProfile -File 'hooks/win/log-tool-call.ps1' | Out-Null
+$env:CLAUDE_PROJECT_DIR = $null
+$canonical3 = Join-Path (Join-Path $Proj3 '.council') 'audit-log.jsonl'
+$nested3 = Join-Path (Join-Path $Proj3 '.council') '.council'
+if ((Test-Path $canonical3) -and -not (Test-Path $nested3)) {
+    Pass "Audit log anchored via CLAUDE_PROJECT_DIR (no nested .council/.council)"
+} else {
+    Fail "Audit log misrouted under CLAUDE_PROJECT_DIR (nested .council/.council or canonical path missing)"
+}
+
+# --- Test 4: Path anchoring via .git walk-up when CLAUDE_PROJECT_DIR is unset ---
+$Proj4 = Join-Path $TempDir 'proj4'
+New-Item -ItemType Directory -Path (Join-Path $Proj4 '.council') -Force | Out-Null
+New-Item -ItemType File -Path (Join-Path $Proj4 '.git') -Force | Out-Null
+$envelope = '{"tool_name":"Bash","tool_args":{"command":"ls"},"cwd":"' + ($Proj4 -replace '\\','/') + '/.council","session_id":"s4","agent_id":"orchestrator"}'
+$env:AUDIT_LOG_PATH = $null
+$env:CLAUDE_PROJECT_DIR = $null
+$envelope | pwsh -NoLogo -NoProfile -File 'hooks/win/log-tool-call.ps1' | Out-Null
+$canonical4 = Join-Path (Join-Path $Proj4 '.council') 'audit-log.jsonl'
+$nested4 = Join-Path (Join-Path $Proj4 '.council') '.council'
+if ((Test-Path $canonical4) -and -not (Test-Path $nested4)) {
+    Pass "Audit log anchored via .git walk-up when CLAUDE_PROJECT_DIR unset"
+} else {
+    Fail "Audit log walk-up anchoring failed (nested .council/.council or canonical path missing)"
+}
+
 # --- Cleanup ---
 Remove-Item -Recurse -Force $TempDir
 

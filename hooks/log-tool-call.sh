@@ -5,8 +5,10 @@
 
 set -uo pipefail
 
-# Env-var override for testability
-AUDIT_LOG="${AUDIT_LOG_PATH:-.council/audit-log.jsonl}"
+# Env-var override for testability; the default path is anchored to the project root
+# below (once the envelope cwd is known) to avoid a nested .council/.council/ audit log
+# when the tool-call cwd is a subdirectory of the project root (issue #18).
+AUDIT_LOG="${AUDIT_LOG_PATH:-}"
 
 # Read envelope from stdin
 envelope=$(cat 2>/dev/null || true)
@@ -42,6 +44,31 @@ except Exception:
     fi
 }
 
+# Resolve the project root for anchoring the audit-log path.
+# Priority: CLAUDE_PROJECT_DIR (set by Claude Code at hook-fire time) ->
+# nearest ancestor of the start dir containing a .git marker -> start dir.
+# Prevents a nested .council/.council/ audit log when the tool-call cwd is a
+# subdirectory of the project root (issue #18). The .git marker is used (not
+# .council/.harness) because those can themselves be misrouted ghost dirs.
+_council_project_root() {
+    local start="${1:-$PWD}" dir parent
+    if [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then
+        printf '%s' "${CLAUDE_PROJECT_DIR%/}"
+        return 0
+    fi
+    dir="${start%/}"
+    while [[ -n "$dir" && "$dir" != "/" ]]; do
+        if [[ -e "$dir/.git" ]]; then
+            printf '%s' "$dir"
+            return 0
+        fi
+        parent=$(dirname "$dir")
+        [[ "$parent" == "$dir" ]] && break
+        dir="$parent"
+    done
+    printf '%s' "${start%/}"
+}
+
 # Check if jq or python3 is available for JSON output building
 if ! command -v jq &>/dev/null && ! command -v python3 &>/dev/null; then
     echo "log-tool-call: neither jq nor python3 found — audit logging skipped" >&2
@@ -53,6 +80,11 @@ tool_name=$(_json_get "$envelope" ".tool_name" "unknown")
 session_id=$(_json_get "$envelope" ".session_id" "unknown")
 agent_id=$(_json_get "$envelope" ".agent_id" "hook/log-tool-call")
 cwd=$(_json_get "$envelope" ".cwd" "")
+
+# Anchor the audit-log path to the project root unless an explicit override was given.
+if [[ -z "$AUDIT_LOG" ]]; then
+    AUDIT_LOG="$(_council_project_root "$cwd")/.council/audit-log.jsonl"
+fi
 
 # Build a privacy-safe input summary
 if [[ "$tool_name" == "Bash" ]]; then
