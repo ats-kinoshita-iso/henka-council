@@ -329,6 +329,13 @@ auto-resume. The following steps govern resolution:
 }
 ```
 
+> **Note — `type: "resume"` is the live resolution-protocol message** an agent
+> emits to lift its own stop. It is distinct from the `andon_signal.type` field
+> recorded on a henkaten record, whose enum is `[alert, stop]` (see
+> `schemas/henka-record.schema.json`). A resume is persisted via the
+> `andon_resolution` sub-object on the decision-log entry (step 5 below), not as
+> a henka-record signal type.
+
 5. **Decision-log entry:** the orchestrator appends a record to
    `decision-log.jsonl` (via `scripts/append-decision.py`) with:
    - `decision_type: "andon-resolution"`

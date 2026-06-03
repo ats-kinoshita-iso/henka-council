@@ -4,6 +4,7 @@
 **Date:** 2026-05-07
 **Lineage:** Absorbs [`docs/phase-0-proposal.md`](./phase-0-proposal.md) (v1) + [`docs/phase-0-proposal-supplement.md`](./phase-0-proposal-supplement.md) (approved 2026-05-07). v1 and the supplement are preserved verbatim as historical record; v2 is the single source of truth from this point forward.
 **Scope:** Phase 0 design proposal for reimplementing `henkaten-council` as a Claude Code plugin that wraps and extends [trine-eval](https://github.com/ats-kinoshita-iso/trine-eval). No code is produced. This document defines the contracts that subsequent sprints will implement.
+**Schema snippets:** the inline JSON Schema fragments below (e.g. the `response_type` and `decision_outcome` enums) are frozen as of kickoff and kept verbatim as the historical contract. The files under `schemas/` are authoritative and may have evolved since; where they differ, the shipped schemas win.
 
 ---
 
