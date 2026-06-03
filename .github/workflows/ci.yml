@@ -50,6 +50,9 @@ jobs:
       - name: Run Python rotation fixture test
         run: python tests/hooks/test-rotate-audit-log.py
 
+      - name: Run schema fixture suite (valid/invalid)
+        run: python tests/test-schema-fixtures.py
+
       - name: Run Python projection-cost test
         run: python tests/scripts/test-measure-projection-cost.py
 

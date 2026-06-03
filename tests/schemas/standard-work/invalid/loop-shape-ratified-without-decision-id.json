@@ -1,0 +1,23 @@
+{
+  "version": "1.1.0",
+  "updated_at": "2026-05-13T22:35:00Z",
+  "procedures": [
+    {
+      "procedure_id": "PROC-001",
+      "name": "Sprint kickoff",
+      "steps": ["Read spec", "Draft contract", "Await approval"]
+    }
+  ],
+  "loop_shapes": [
+    {
+      "shape_id": "plan-then-execute-loop",
+      "name": "Plan-Then-Execute Loop",
+      "problem": "High cost of committing to the wrong direction on non-trivial work.",
+      "forces": "Speed of starting vs. the cost of rework if the approach is wrong.",
+      "solution": "Draft a plan, review it, then execute against the approved plan.",
+      "consequences": "Adds a planning round; reduces expensive mid-execution pivots.",
+      "evidence_sprints": [3, 5],
+      "status": "ratified"
+    }
+  ]
+}

@@ -40,8 +40,8 @@
     },
     "rationale": {
       "type": "string",
-      "minLength": 1,
-      "description": "One-paragraph rationale for the chosen classification. Cites the specific characteristics of the upcoming work that informed the label."
+      "minLength": 40,
+      "description": "One-paragraph rationale for the chosen classification. Cites the specific characteristics of the upcoming work that informed the label. minLength 40 rejects placeholder/single-character values while remaining well below a real one-paragraph rationale (existing valid fixtures are 250+ chars)."
     },
     "expected_loop_shape": {
       "type": "string",
