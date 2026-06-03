@@ -5,7 +5,15 @@
   "author": {
     "name": "Atsushi Kinoshita"
   },
-  "license": "MIT",
-  "homepage": "https://github.com/ats-kinoshita-iso/henka-council",
-  "min_claude_code_version": "0.3.0"
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/atsushi-kinoshita/henka-council",
+  "min_claude_code_version": "0.3.0",
+  "skills": [
+    "skills/council-kickoff/SKILL.md",
+    "skills/from-plan/SKILL.md"
+  ],
+  "agents": [
+    "agents/orchestrator.md",
+    "agents/architect.md"
+  ]
 }
