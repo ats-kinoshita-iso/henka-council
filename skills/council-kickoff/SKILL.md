@@ -199,7 +199,7 @@ the snippet but does not write it.
 
 ---
 
-### Step 1e — Projection Cost Measurement (advisory)
+#### 1e. Projection Cost Measurement (advisory)
 
 Run the projection-cost measurement script and surface the result to the user.
 This step is informational only; it does not block kickoff completion.

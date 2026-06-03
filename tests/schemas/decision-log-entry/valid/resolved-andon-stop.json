@@ -1,0 +1,25 @@
+{
+  "decision_id": "DEC-0123",
+  "timestamp": "2026-05-14T09:30:00Z",
+  "decision_type": "andon-resolution",
+  "decision_outcome": "applied",
+  "autonomy_level_used": 4,
+  "effective_autonomy_at_decision": 4,
+  "reversibility": "reversible",
+  "sprint_context": 8,
+  "applied_automatically": false,
+  "user_approval_required": true,
+  "user_approval_status": "approved",
+  "description": "Andon stop from henkaten-detector resolved after swarm review: the flagged verification divergence was a stale fixture; it was corrected, re-run, and the sprint resumed.",
+  "affected_files": [".harness/contracts/sprint-08.md"],
+  "council_agents_involved": ["orchestrator", "henkaten-detector", "architect", "scope-guardian"],
+  "evidence_cited": [],
+  "linked_henka_id": "HK-0051",
+  "nemawashi_walkthrough_version": null,
+  "andon_resolution": {
+    "originator": "henkaten-detector",
+    "swarm": ["architect", "scope-guardian"],
+    "resolution": "resumed",
+    "duration_seconds": 420
+  }
+}
