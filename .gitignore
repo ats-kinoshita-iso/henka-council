@@ -32,3 +32,11 @@ Thumbs.db
 .claude/settings.local.json
 .claude/worktrees/
 .clone/
+
+# Council runtime governance state (per-project; created by /council-kickoff).
+# In a governed project this is runtime audit/state, not source; in this repo it
+# is the dogfooded baseline created during development. The append scripts
+# (scripts/append-henka.py, scripts/append-decision.py) git-add canonical
+# .council/ paths — ignoring the directory keeps those runtime writes from being
+# staged into the plugin's own source tree.
+.council/
