@@ -82,6 +82,13 @@ def main() -> int:
             contract="contract-post-rescope.md", branch="main")
     check("no-charter-on-mainline -> WARN", p.returncode, WARN_CODE, p)
 
+    # 6b. REGRESSION (bay-o-net adoption): a spec that historically MENTIONS the
+    #     killed workstream but a CLEAN contract must still PASS — killed-workstream
+    #     detection is scoped to the proposed contract, not the spec's narrative.
+    p = run(charter="charter-mainline-post.json", spec="spec-historical-mention.md",
+            contract="contract-post-rescope.md", branch="main")
+    check("spec-historical-mention + clean-contract -> PASS (no false positive)", p.returncode, PASS_CODE, p)
+
     # 7. The --emit-henka candidate must validate against the henka-record schema
     #    (so it can be piped straight to append-henka.py).
     import json as _json

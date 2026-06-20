@@ -107,7 +107,14 @@ def evaluate(
     locked = [str(d) for d in direction_cfg.get("locked_decisions", [])]
     anchor_path = direction_cfg.get("anchor_path", "")
     overrides = direction_cfg.get("tier_overrides", {})  # check_id -> "pass|warn|block"
-    haystack = f"{spec_text}\n{contract_text}"
+    # The anchor citation may appear in either the spec or the contract.
+    citation_haystack = f"{spec_text}\n{contract_text}"
+    # Killed-workstream reintroduction is judged against the CONTRACT (the
+    # *proposed* work) only — NOT the spec, which legitimately documents retired
+    # workstreams in its history (a real false-positive source: bay-o-net's spec
+    # mentions the deprecated cmpx writer 10+ times). Scoping to the contract is
+    # what keeps Layer A from crying wolf; semantic spec drift is Layer B's job.
+    proposed_text = contract_text
 
     def tier(check_id: str, default: str) -> str:
         ov = overrides.get(check_id)
@@ -151,7 +158,7 @@ def evaluate(
     # --- Check 2: strategic-anchor citation in the contract -----------------
     anchor_tokens = [t for t in ([pathlib.Path(anchor_path).name] if anchor_path else []) + locked if t]
     if anchor_tokens:
-        cited = any(tok and tok in haystack for tok in anchor_tokens)
+        cited = any(tok and tok in citation_haystack for tok in anchor_tokens)
         if not cited and not declared_divergent:
             findings.append(
                 f"check2/anchor-citation: contract does not cite the strategic anchor "
@@ -164,8 +171,10 @@ def evaluate(
     for kw in killed:
         if not kw:
             continue
-        pattern = re.compile(re.escape(kw).replace(r"\ ", r"[-_\s]+"), re.IGNORECASE)
-        if pattern.search(haystack):
+        # Tolerate any non-alphanumeric run between keyword words so a contract
+        # writing "`.cmpx` writer" / "cmpx-writer" / "cmpx_writer" all match.
+        pattern = re.compile(re.escape(kw).replace(r"\ ", r"[^A-Za-z0-9]+"), re.IGNORECASE)
+        if pattern.search(proposed_text):
             hits.append(kw)
     if hits:
         if not declared_divergent:
