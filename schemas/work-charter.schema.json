@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "work-charter.schema.json",
+  "title": "WorkCharter",
+  "description": "Declares the intent and direction of a unit of work (a sprint and/or a branch) BEFORE the work starts. Lives at .council/charters/sprint-NN.json (council-owned working file; mutable, NOT append-only). Consumed by scripts/direction-check.py (Layer A deterministic tripwires) and the direction-guardian agent (Layer B semantic judge). The exploration_mode field is the single 'flag' that propagates to the git hook (Surface 2) and the GitHub PR/Action (Surface 3): divergent work is legitimate WHEN declared, flagged when silent. See instructions/direction-check.md.",
+  "type": "object",
+  "required": [
+    "charter_id",
+    "created_at",
+    "strategic_anchor",
+    "workstream_scope",
+    "exploration_mode"
+  ],
+  "properties": {
+    "charter_id": {
+      "type": "string",
+      "pattern": "^WC-[0-9]{4}$",
+      "description": "Charter identifier, format WC-NNNN."
+    },
+    "sprint_context": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "The sprint number this charter governs, when the work is harness-sprint-scoped."
+    },
+    "branch": {
+      "type": "string",
+      "description": "The git branch this work lands on. Used by the branch-charter git hook (Surface 2) to decide whether a divergent branch has a declared purpose."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the charter was authored."
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Human or agent id that authored the charter."
+    },
+    "strategic_anchor": {
+      "type": "object",
+      "description": "The strategic-anchor document this work must stay aligned with (e.g. a divorce-spec). Drift from the anchor is the failure this whole mechanism exists to catch.",
+      "required": ["path"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Repo-relative path to the strategic-anchor doc, e.g. docs/divorce-spec.md."
+        },
+        "cited_section": {
+          "type": "string",
+          "description": "The specific section / rule of the anchor this work is reconciled against."
+        },
+        "locked_decisions": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Identifiers of binding decisions the work must honor, e.g. ['ADR-0008']."
+        }
+      },
+      "additionalProperties": false
+    },
+    "workstream_scope": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"},
+      "description": "The workstream names this work touches. Each should map to a workstream the anchor recognizes (or be declared as a divergence)."
+    },
+    "exploration_mode": {
+      "type": "string",
+      "enum": ["mainline", "parallel-exploration", "competitive"],
+      "description": "mainline = work on the sanctioned direction; any anchor drift here is undeclared and BLOCKS. parallel-exploration = a deliberate side-track that may diverge (e.g. a spike). competitive = an intentional competing implementation tested against mainline ('competitive code development'). For the two non-mainline modes, divergence is legitimate but MUST carry a divergence_justification."
+    },
+    "anchor_alignment": {
+      "type": "array",
+      "description": "Per-workstream assertion that the work aligns with the anchor (or is a declared divergence). Optional but recommended; the Layer B judge reads it.",
+      "items": {
+        "type": "object",
+        "required": ["workstream", "aligned"],
+        "properties": {
+          "workstream": {"type": "string"},
+          "aligned": {"type": "boolean"},
+          "note": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "divergence_justification": {
+      "type": "string",
+      "minLength": 20,
+      "description": "REQUIRED when exploration_mode is parallel-exploration or competitive (enforced by direction-check.py, not by this schema alone, so a mainline charter need not carry it). Records WHY the work diverges from the anchor and the competing hypothesis being tested."
+    },
+    "direction_check": {
+      "type": "object",
+      "description": "Last verdict written back by direction-check.py / direction-guardian. Lets the trine-eval seam read a pre-computed verdict without executing any council code.",
+      "properties": {
+        "result": {"type": "string", "enum": ["pass", "warn", "block"]},
+        "impact_level": {
+          "type": "string",
+          "enum": ["informational", "actionable", "blocking", "high-risk"]
+        },
+        "henka_id": {"type": "string"},
+        "checked_at": {"type": "string", "format": "date-time"},
+        "findings": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Human-readable list of the checks that fired."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

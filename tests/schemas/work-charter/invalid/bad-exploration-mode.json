@@ -1,0 +1,7 @@
+{
+  "charter_id": "WC-0001",
+  "created_at": "2026-06-20T10:00:00Z",
+  "strategic_anchor": {"path": "docs/divorce-spec.md"},
+  "workstream_scope": ["yaml-writer"],
+  "exploration_mode": "skunkworks"
+}

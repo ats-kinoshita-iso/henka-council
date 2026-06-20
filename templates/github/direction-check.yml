@@ -1,0 +1,71 @@
+# Installed by /henkaten-council:council-kickoff into the target repo as
+# .github/workflows/direction-check.yml. Runs the Layer A deterministic
+# direction check on every push / PR and posts a status check. Layer B (the
+# semantic judge) runs in-session in the council, not in CI.
+name: Direction Check (Layer A)
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  direction-check:
+    name: direction-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Resolve the work charter for this branch
+        id: charter
+        shell: bash
+        run: |
+          set -uo pipefail
+          BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          CHARTER=""
+          if [ -d .council/charters ]; then
+            CHARTER=$(BRANCH="$BRANCH" python - <<'PY'
+import json, os, glob, re
+branch = os.environ["BRANCH"]
+for p in sorted(glob.glob(".council/charters/*.json")):
+    try:
+        if json.load(open(p, encoding="utf-8")).get("branch") == branch:
+            print(p); raise SystemExit
+    except SystemExit:
+        raise
+    except Exception:
+        pass
+slug = re.sub(r"[^A-Za-z0-9._-]+", "-", branch).strip("-")
+cand = f".council/charters/branch-{slug}.json"
+print(cand if os.path.exists(cand) else "")
+PY
+)
+          fi
+          echo "charter=$CHARTER" >> "$GITHUB_OUTPUT"
+
+      - name: Run direction-check (Layer A, CI mode)
+        shell: bash
+        run: |
+          set -uo pipefail
+          # The plugin vendors direction-check.py; resolve it wherever it lives.
+          SCRIPT=$(ls scripts/direction-check.py .council/scripts/direction-check.py 2>/dev/null | head -1 || true)
+          if [ -z "$SCRIPT" ]; then
+            echo "::notice::direction-check.py not vendored in this repo; skipping."
+            exit 0
+          fi
+          ARGS=(--config .council/config.json --branch "${{ steps.charter.outputs.branch }}" --ci)
+          if [ -f .harness/spec.md ]; then ARGS+=(--spec .harness/spec.md); fi
+          if [ -n "${{ steps.charter.outputs.charter }}" ]; then ARGS+=(--charter "${{ steps.charter.outputs.charter }}"); fi
+          python "$SCRIPT" "${ARGS[@]}"
+          rc=$?
+          # Exit tiers: 0 PASS, 10 WARN, 20 BLOCK. Fail the check only on BLOCK.
+          if [ "$rc" -ge 20 ]; then exit 1; fi
+          exit 0
