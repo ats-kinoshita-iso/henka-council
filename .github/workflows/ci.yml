@@ -34,6 +34,7 @@ jobs:
           set -e
           bash tests/hooks/test-enforce-append-only.sh
           bash tests/hooks/test-enforce-reversibility.sh
+          bash tests/hooks/test-enforce-branch-charter.sh
           bash tests/hooks/test-log-tool-call.sh
           bash tests/hooks/test-rotate-audit-log.sh
 

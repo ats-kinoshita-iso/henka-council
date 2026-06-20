@@ -41,11 +41,16 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import pathlib
 import re
 import sys
 from typing import Optional
+
+
+def _now_iso() -> str:
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 PASS, WARN, BLOCK = "pass", "warn", "block"
 _SEVERITY = {PASS: 0, WARN: 10, BLOCK: 20}
@@ -207,8 +212,18 @@ def evaluate(
 
 
 def build_henka_candidate(verdict: dict, charter: Optional[dict], branch: Optional[str]) -> dict:
-    """Shape a henka-record candidate for append-henka.py (Method-axis scope-change)."""
+    """Shape a henka-record candidate for append-henka.py (Method-axis scope-change).
+
+    Schema-valid so it can be piped straight to append-henka.py. henka_id and
+    detected_at are sentinels ('HK-0000' / a UTC stamp) that the Orchestrator —
+    the only sanctioned writer — (re)assigns at persist time.
+    """
+    confidence = {BLOCK: "high", WARN: "medium", PASS: "low"}[verdict["result"]]
+    response_type = {BLOCK: "andon-stop", WARN: "propose-to-user", PASS: "log-only"}[verdict["result"]]
+    sprint_context = (charter or {}).get("sprint_context")
     return {
+        "henka_id": "HK-0000",
+        "sprint_context": sprint_context if isinstance(sprint_context, int) else 0,
         "fourM_axis": "Method",
         "category": "scope-change",
         "change_origin": "active",
@@ -217,14 +232,17 @@ def build_henka_candidate(verdict: dict, charter: Optional[dict], branch: Option
         "affected_artifacts": [a for a in [
             (charter or {}).get("strategic_anchor", {}).get("path"),
         ] if a],
+        "response_type": response_type,
         "evidence": [
             {
                 "claim": f"Direction-check Layer A verdict: {verdict['result'].upper()}"
                 + (f" on branch '{branch}'" if branch else ""),
                 "evidence_class": "observed",
-                "confidence": 4,
+                "confidence": confidence,
             }
         ],
+        "status": "classified",
+        "detected_at": _now_iso(),
     }
 
 

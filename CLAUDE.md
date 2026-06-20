@@ -42,6 +42,7 @@ top of any project managed by the `trine-eval` harness. It introduces:
 | architect | 2 | fork | Read, Glob, Grep |
 | scope-guardian | 2 | fork | Read, Glob, Grep |
 | henkaten-detector | 1 | fork | Read, Glob, Grep |
+| direction-guardian | 1 | fork | Read, Glob, Grep, Bash |
 | retrospective | 2 | fork | Read, Glob, Grep |
 
 The Orchestrator is the **only** agent permitted to use `Task` and `Write`. All
@@ -76,9 +77,23 @@ any modification:
 | Skill | Invocation | Purpose |
 |---|---|---|
 | council-kickoff | `/henkaten-council:council-kickoff` | Bootstrap `.council/` governance baseline in a new project |
+| council-charter | `/henkaten-council:council-charter` | Declare a unit of work's strategic anchor, workstreams, and `exploration_mode` at work-start (the work-start direction gate). See `instructions/direction-check.md`. |
 
 Additional skills (council-autorun, council-review, council-retro, council-detect)
 are delivered in later sprints (S4–S6).
+
+### Work-start direction gate
+
+`council-charter` + the `direction-guardian` agent + `scripts/direction-check.py`
+form a two-layer gate that flags work diverging from the project's strategic
+anchor (the failure that compounded across three bay-o-net sprints). A
+first-class `exploration_mode` (`mainline` | `parallel-exploration` |
+`competitive`) makes intentional parallel/competitive work legitimate *when
+declared* and flags it when silent. Surfaced in-session (council-autorun Step
+1A.7), at the local git level (`hooks/enforce-branch-charter.sh`), and on GitHub
+(`templates/github/`). Configured via `.council/config.json` → `direction_check`
+(off by default). Charters live at `.council/charters/` (council-owned working
+files; mutable, written via `scripts/append-charter.py`).
 
 ---
 

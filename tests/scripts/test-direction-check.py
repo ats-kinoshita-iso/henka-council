@@ -82,6 +82,30 @@ def main() -> int:
             contract="contract-post-rescope.md", branch="main")
     check("no-charter-on-mainline -> WARN", p.returncode, WARN_CODE, p)
 
+    # 7. The --emit-henka candidate must validate against the henka-record schema
+    #    (so it can be piped straight to append-henka.py).
+    import json as _json
+    import tempfile
+    try:
+        import jsonschema  # type: ignore
+        out = pathlib.Path(tempfile.mkdtemp()) / "henka.json"
+        subprocess.run([
+            sys.executable, str(SCRIPT),
+            "--config", str(FIX / "config.json"),
+            "--spec", str(FIX / "spec-pre-rescope.md"),
+            "--contract", str(FIX / "contract-pre-rescope.md"),
+            "--branch", "main", "--emit-henka", str(out),
+        ], capture_output=True, text=True)
+        schema = _json.loads((_REPO_ROOT / "schemas" / "henka-record.schema.json").read_text())
+        errs = list(jsonschema.Draft7Validator(schema).iter_errors(_json.loads(out.read_text())))
+        if errs:
+            failures.append("emit-henka-candidate-valid")
+            print(f"FAIL: emit-henka candidate invalid: {errs[0].message}")
+        else:
+            print("PASS: emit-henka candidate validates against henka-record schema")
+    except ImportError:
+        print("SKIP: jsonschema not installed; emit-henka validity not checked")
+
     if failures:
         print(f"\n{len(failures)} assertion(s) failed.")
         return 1
