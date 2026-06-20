@@ -1,0 +1,18 @@
+{
+  "charter_id": "WC-0090",
+  "sprint_context": 9,
+  "branch": "claude/compete-cmpx-fallback",
+  "created_at": "2026-05-18T09:00:00Z",
+  "created_by": "architect",
+  "strategic_anchor": {
+    "path": "docs/divorce-spec.md",
+    "cited_section": "Persistence format",
+    "locked_decisions": ["ADR-0008"]
+  },
+  "workstream_scope": ["cmpx-writer"],
+  "exploration_mode": "competitive",
+  "divergence_justification": "Deliberately prototyping a cmpx writer as a competing fallback to benchmark round-trip fidelity against the YAML path before committing to YAML-only.",
+  "anchor_alignment": [
+    {"workstream": "cmpx-writer", "aligned": false, "note": "Declared divergence; competing track."}
+  ]
+}

@@ -53,6 +53,9 @@ jobs:
       - name: Run schema fixture suite (valid/invalid)
         run: python tests/test-schema-fixtures.py
 
+      - name: Run direction-check replay test (Layer A)
+        run: python tests/scripts/test-direction-check.py
+
       - name: Run Python projection-cost test
         run: python tests/scripts/test-measure-projection-cost.py
 

@@ -1,0 +1,14 @@
+{
+  "charter_id": "WC-0009",
+  "sprint_context": 9,
+  "branch": "main",
+  "created_at": "2026-05-18T09:00:00Z",
+  "created_by": "architect",
+  "strategic_anchor": {
+    "path": "docs/divorce-spec.md",
+    "cited_section": "Persistence format",
+    "locked_decisions": []
+  },
+  "workstream_scope": ["cmpx-writer"],
+  "exploration_mode": "mainline"
+}
