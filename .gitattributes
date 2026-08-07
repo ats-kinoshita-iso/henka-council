@@ -1,0 +1,14 @@
+# Line-ending policy.
+#
+# Bash hooks and Python scripts are executed on Linux hosts even when the
+# checkout happens on Windows (e.g. a WSL `claude` installing this plugin
+# from a /mnt/c working-tree marketplace). CRLF bash scripts fail to parse
+# there with exit 2 — which, for the Stop hook, Claude Code interprets as
+# "block the stop" and loops headless sessions. Force LF so every checkout
+# is safe to reuse across platforms.
+* text=auto
+*.sh text eol=lf
+*.py text eol=lf
+
+# PowerShell parity hooks are Windows-native; platform-default endings.
+*.ps1 text

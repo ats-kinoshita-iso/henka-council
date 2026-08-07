@@ -205,11 +205,13 @@ Run the projection-cost measurement script and surface the result to the user.
 This step is informational only; it does not block kickoff completion.
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/scripts/measure-projection-cost.py --json
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/measure-projection-cost.py --json
 ```
 
-On Windows targets, substitute `python` with `python.exe` if the bare command
-is not on `PATH`. The script reads `.claude-plugin/plugin.json` from the
+Commands in this skill use `python3` — Debian/Ubuntu hosts ship no bare
+`python` without the `python-is-python3` package. On Windows targets,
+substitute `python` (or the `py` launcher) if `python3` is not on `PATH`.
+The script reads `.claude-plugin/plugin.json` from the
 plugin install directory, sums per-file token estimates for the always-projected
 file set (`CLAUDE.md` + `skills` + `agents`), and reports the total against
 an 8,000-token advisory budget.
@@ -228,6 +230,32 @@ If the measurement reports `over_budget: true`, append:
 This step is idempotent: re-running kickoff against an already-bootstrapped
 project re-runs the measurement and re-surfaces the result. The script does
 not write any files; it emits to stdout only.
+
+---
+
+#### 1f. Python dependency check
+
+The council's append/validate scripts (`scripts/append-henka.py`,
+`scripts/append-decision.py`, `scripts/validate-*.py`,
+`scripts/update-effective-autonomy.py`, `scripts/persist-plan.py`) require
+the `jsonschema` package. Verify it is importable before the council starts
+governing:
+
+```bash
+python3 -c "import jsonschema" && echo "jsonschema OK"
+```
+
+If the import fails, surface to the user and pause until resolved:
+
+> "The `jsonschema` Python package is not installed. The council's
+> append/validate scripts fail closed without it. Install it with
+> `python3 -m pip install -r ${CLAUDE_PLUGIN_ROOT}/requirements.txt`
+> (or `python3 -m pip install jsonschema`), then re-invoke
+> `/henkaten-council:council-kickoff`."
+
+The scripts themselves fail closed with the same install instruction
+(exit 1) when invoked without the package — this pre-flight surfaces the
+problem before any governance state exists rather than mid-sprint.
 
 ---
 
@@ -456,7 +484,7 @@ project_type, components_enabled, etc.). The helper script preserves every
 key the harness owns and only updates `governance`.
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/scripts/inject-governance.py --file .harness/config.json
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/inject-governance.py --file .harness/config.json
 ```
 
 The script is idempotent: a second invocation when the governance block already

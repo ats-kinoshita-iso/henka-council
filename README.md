@@ -41,6 +41,18 @@ Claude Code skill system. Each sprint, the council:
   (run `/trine-eval:harness-kickoff` first if the `.harness/` directory does
   not yet exist)
 - Git ≥ 2.30
+- Python ≥ 3.10, available as `python3` on Linux/macOS (`python` on Windows),
+  with the `jsonschema` package installed — the council's append/validate
+  scripts fail closed without it:
+
+  ```
+  python3 -m pip install -r requirements.txt
+  ```
+
+  (or `python3 -m pip install jsonschema`). Debian/Ubuntu containers ship no
+  bare `python`; every documented command in this plugin therefore uses
+  `python3`. The council-kickoff skill re-checks this dependency at Step 1f
+  and surfaces the install command if it is missing.
 
 ---
 

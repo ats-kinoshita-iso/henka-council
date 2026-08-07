@@ -1,0 +1,5 @@
+# Runtime dependencies of the council scripts (scripts/*.py).
+# CI installs from this file (.github/workflows/ci.yml); end users install via
+#   python3 -m pip install -r requirements.txt
+# See README "Prerequisites". Floor per the sprint-04 contract: jsonschema >= 4.0.
+jsonschema>=4.0

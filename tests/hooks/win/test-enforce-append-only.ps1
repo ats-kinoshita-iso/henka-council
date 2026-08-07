@@ -49,7 +49,32 @@ $code = Invoke-Hook $envelope
 if ($code -ne 0) { Pass "Absolute path to audit-log.jsonl is blocked" }
 else { Fail "Absolute /proj/.council/audit-log.jsonl should be blocked" }
 
+# --- BLOCK cases: Windows backslash paths (native Windows envelopes) ---
+# The hook must normalize backslash separators in file_path and cwd before
+# matching; without that, backslash paths silently under-block.
+
+$envelope = '{"tool_name":"Write","tool_args":{"file_path":".council\\henka-register.jsonl"},"cwd":"C:\\proj","session_id":"test"}'
+$code = Invoke-Hook $envelope
+if ($code -ne 0) { Pass "Backslash-relative .council path is blocked" }
+else { Fail "Backslash .council\henka-register.jsonl should be blocked" }
+
+$envelope = '{"tool_name":"Write","tool_args":{"file_path":"C:\\proj\\.council\\decision-log.jsonl"},"cwd":"C:\\somewhere\\else","session_id":"test"}'
+$code = Invoke-Hook $envelope
+if ($code -ne 0) { Pass "Absolute Windows backslash path to decision-log.jsonl is blocked" }
+else { Fail "Absolute C:\proj\.council\decision-log.jsonl should be blocked" }
+
+$envelope = '{"tool_name":"Write","tool_args":{"file_path":"audit-log.jsonl"},"cwd":"C:\\proj\\.council","session_id":"test"}'
+$code = Invoke-Hook $envelope
+if ($code -ne 0) { Pass "Bare audit-log.jsonl from backslash Windows cwd is blocked" }
+else { Fail "Bare audit-log.jsonl from backslash cwd C:\proj\.council should be blocked" }
+
 # --- ALLOW cases ---
+
+# Backslash path with the protected basename but NOT under .council must NOT over-block
+$envelope = '{"tool_name":"Write","tool_args":{"file_path":"C:\\proj\\henka-register.jsonl"},"cwd":"C:\\proj","session_id":"test"}'
+$code = Invoke-Hook $envelope
+if ($code -eq 0) { Pass "Backslash path to non-.council henka-register.jsonl is allowed" }
+else { Fail "C:\proj\henka-register.jsonl (not under .council) should be allowed (exit was $code)" }
 
 # Same basename but NOT under .council/ is a different file — must NOT over-block
 $envelope = '{"tool_name":"Write","tool_args":{"file_path":"henka-register.jsonl"},"cwd":"/proj","session_id":"test"}'

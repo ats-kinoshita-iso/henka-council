@@ -142,7 +142,7 @@ From those claims, **randomly sample one** and re-run its `verification`
 command via:
 
 ```
-python scripts/run-verification.py "<verification_string>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/run-verification.py "<verification_string>"
 ```
 
 `scripts/run-verification.py` enforces the §7.0.2 syntax allowlist (read-only
@@ -273,7 +273,7 @@ After the DEC entry is written, invoke `scripts/update-effective-autonomy.py`
 with the new level and trigger evidence:
 
 ```
-python scripts/update-effective-autonomy.py \
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/update-effective-autonomy.py \
   --level {new_level} \
   --trigger "restore-autonomy: DEC-{NNNN}" \
   --evidence "User invoked --restore-autonomy after resolving: {conditions}"

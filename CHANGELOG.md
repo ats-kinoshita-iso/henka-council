@@ -1,5 +1,77 @@
 # Changelog
 
+## v0.1.3 — 2026-08-06
+
+Linux/container portability release. Fixes confirmed breakage when a Windows
+checkout is reused on Linux (e.g. a WSL `claude` installing the plugin from a
+`/mnt/c` directory marketplace), plus path-anchoring defects that only
+manifest in installed-plugin contexts. No changes to schemas or the
+governance protocol.
+
+### Added
+
+- **`.gitattributes`** — forces `eol=lf` for `*.sh` and `*.py` (with a
+  `* text=auto` default). Windows checkouts previously produced CRLF hook
+  scripts; bash on Linux fails to parse those and exits 2. For the Stop hook
+  (`hooks/session-stopped-marker.sh`) exit 2 means "block the stop", which
+  sent headless `claude -p` sessions into a multi-turn loop returning an
+  empty result (observed live 2026-08-06 in WSL). Existing Windows checkouts
+  pick up the policy after a re-checkout, e.g.
+  `git rm -r --cached . && git reset --hard` (or delete and re-clone).
+- **`requirements.txt`** — declares the previously undeclared `jsonschema>=4.0`
+  runtime dependency of the seven council scripts that import it. CI now
+  installs from this file instead of an inline package list.
+- **`skills/council-kickoff/SKILL.md` Step 1f** — Python dependency
+  pre-flight: verifies `jsonschema` is importable at kickoff and surfaces the
+  install command before any governance state exists.
+- **CI** — runs `tests/scripts/test-run-verification.py` on both platforms
+  (the test existed and was isolation-hardened in #25 but was never wired
+  into the workflow).
+- **Hook fixture tests** — backslash Windows-path envelope cases (relative,
+  absolute, and bare-filename-with-backslash-cwd, plus a non-`.council`
+  allow case) in both `tests/hooks/test-enforce-append-only.sh` and
+  `tests/hooks/win/test-enforce-append-only.ps1`, locking in the path
+  normalization the hooks already perform.
+
+### Changed
+
+- **Skill and instruction call sites** — every documented script invocation
+  now uses `python3` (Debian/Ubuntu images ship no bare `python`) and an
+  explicit `${CLAUDE_PLUGIN_ROOT}/scripts/...` path instead of a bare
+  relative `scripts/...` path, which resolved against the user's project cwd
+  and failed in installed-plugin contexts. Touched: `council-kickoff`,
+  `council-review`, `council-autorun`, `council-detect`, `from-plan`
+  SKILL.md files, `instructions/evidence-first.md` (allowlist table), and
+  `instructions/projection-cost.md`. The council-detect call also switched
+  from a nonexistent `--record` flag to the stdin form
+  (`echo '{...}' | python3 .../append-henka.py`) matching the script's
+  actual interface.
+- **Council scripts** (`append-henka.py`, `append-decision.py`,
+  `update-effective-autonomy.py`, `validate-*.py`, `persist-plan.py`) — a
+  missing `jsonschema` package now fails closed with the exact install
+  command (exit 1) instead of an uncaught `ModuleNotFoundError` traceback.
+- **`README.md` Prerequisites** — documents the Python ≥ 3.10 + `jsonschema`
+  requirement with the install command, and the `python3`-first convention.
+
+### Fixed
+
+- **`scripts/run-verification.py`** — anchored `.council/` and the
+  verification-command execution cwd to the plugin install directory
+  (`_REPO_ROOT`) instead of the invoking project's cwd, inconsistent with
+  every other council script's cwd-relative `pathlib.Path(".council")`. In an
+  installed-plugin context, rejection Henkaten records were appended to (and
+  executed commands ran inside) the plugin cache directory. `.council/` now
+  resolves against the invoking cwd, executed commands inherit the invoking
+  cwd, and only the sibling `append-henka.py` lookup stays anchored to the
+  script's own directory. Covered by new tests 7a/7b/8 in
+  `tests/scripts/test-run-verification.py`.
+- **`henka-council.txt`** — line endings normalized (the only file whose
+  committed content was CRLF).
+- **`.claude-plugin/plugin.json`** — `license` said `Apache-2.0`; the LICENSE
+  file and README are MIT (the #17 consistency pass missed this field).
+  `homepage` pointed at the wrong GitHub org; corrected to
+  `ats-kinoshita-iso/henka-council`.
+
 ## v0.1.2 — 2026-05-20
 
 Plugin-packaging readiness pass. Makes henka-council installable via the

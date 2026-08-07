@@ -86,7 +86,44 @@ else
     pass "Absolute path to audit-log.jsonl is blocked"
 fi
 
+# --- BLOCK cases: Windows backslash paths (Git Bash / Windows envelopes) ---
+# Windows hosts emit backslash separators in file_path and cwd. The hook must
+# normalize them before matching; without that, backslash paths silently
+# under-block on Git Bash.
+
+# Relative backslash path to a protected log must block
+envelope='{"tool_name":"Write","tool_args":{"file_path":".council\\henka-register.jsonl"},"cwd":"C:\\proj","session_id":"test"}'
+if run_hook "$envelope"; then
+    fail 'Backslash .council\henka-register.jsonl should be blocked'
+else
+    pass "Backslash-relative .council path is blocked"
+fi
+
+# Absolute Windows path to a protected log must block
+envelope='{"tool_name":"Write","tool_args":{"file_path":"C:\\proj\\.council\\decision-log.jsonl"},"cwd":"C:\\somewhere\\else","session_id":"test"}'
+if run_hook "$envelope"; then
+    fail 'Absolute C:\proj\.council\decision-log.jsonl should be blocked'
+else
+    pass "Absolute Windows backslash path to decision-log.jsonl is blocked"
+fi
+
+# Bare filename resolved against a backslash Windows cwd inside .council must block
+envelope='{"tool_name":"Write","tool_args":{"file_path":"audit-log.jsonl"},"cwd":"C:\\proj\\.council","session_id":"test"}'
+if run_hook "$envelope"; then
+    fail 'Bare audit-log.jsonl from backslash cwd C:\proj\.council should be blocked'
+else
+    pass "Bare audit-log.jsonl from backslash Windows cwd is blocked"
+fi
+
 # --- ALLOW cases ---
+
+# Backslash path with the protected basename but NOT under .council must NOT over-block
+envelope='{"tool_name":"Write","tool_args":{"file_path":"C:\\proj\\henka-register.jsonl"},"cwd":"C:\\proj","session_id":"test"}'
+if run_hook "$envelope"; then
+    pass "Backslash path to non-.council henka-register.jsonl is allowed"
+else
+    fail 'C:\proj\henka-register.jsonl (not under .council) should be allowed'
+fi
 
 # Same basename but NOT under .council/ is a different file — must NOT over-block
 envelope='{"tool_name":"Write","tool_args":{"file_path":"henka-register.jsonl"},"cwd":"/proj","session_id":"test"}'

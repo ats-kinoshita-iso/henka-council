@@ -10,6 +10,10 @@ Exercises:
      OR timeout-driven termination with --timeout 1
   6. Henkaten emission on rejection: the appended record parses against
      schemas/henka-record.schema.json
+  7. Rejection Henkaten append anchors .council/ to the invoking cwd, not the
+     plugin install directory (NO-OP warning without .council/, append with it)
+  8. Executed allowlisted commands inherit the invoking cwd
+  9. The test run itself never creates .council/ in the repo root
 
 Exit codes:
     0  — all assertions passed
@@ -19,6 +23,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -34,7 +39,11 @@ _SCRIPT = _REPO_ROOT / "scripts" / "run-verification.py"
 _SCHEMA_PATH = _REPO_ROOT / "schemas" / "henka-record.schema.json"
 
 
-def run(args: list[str], env_extras: dict[str, str] | None = None) -> subprocess.CompletedProcess:
+def run(
+    args: list[str],
+    env_extras: dict[str, str] | None = None,
+    cwd: pathlib.Path | None = None,
+) -> subprocess.CompletedProcess:
     """Run scripts/run-verification.py with *args*; return CompletedProcess."""
     import os
     env = os.environ.copy()
@@ -45,6 +54,7 @@ def run(args: list[str], env_extras: dict[str, str] | None = None) -> subprocess
         capture_output=True,
         text=True,
         env=env,
+        cwd=str(cwd) if cwd is not None else None,
     )
 
 
@@ -179,15 +189,80 @@ def main() -> int:
                         print("Test 6 PASS: Henkaten record written and validates against schema")
 
     # ------------------------------------------------------------------
-    # Verify .council/ was NOT created in the repo root
+    # Test 7: rejection Henkaten append anchors .council/ to the invoking
+    # cwd, not the plugin install directory (Linux-container portability fix)
+    # ------------------------------------------------------------------
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp = pathlib.Path(tmpdir)
+
+        # 7a: no .council/ in the invoking cwd → NO-OP warning, no write
+        r = run(["--check-only", "rm -rf /tmp/henka-cwd-test"], cwd=tmp)
+        if r.returncode == 0:
+            failures.append("Test 7a FAIL: rejected command exited 0")
+        elif (tmp / ".council").exists():
+            failures.append(
+                "Test 7a FAIL: .council/ was created in the invoking cwd without opt-in"
+            )
+        elif "NO-OP" not in r.stderr:
+            failures.append(
+                "Test 7a FAIL: expected the '.council … NO-OP' warning on stderr; "
+                f"got {r.stderr.strip()!r}"
+            )
+        else:
+            print("Test 7a PASS: missing .council/ in invoking cwd -> NO-OP warning")
+
+        # 7b: .council/ present in the invoking cwd → record appended there
+        (tmp / ".council").mkdir()
+        r = run(["--check-only", "rm -rf /tmp/henka-cwd-test"], cwd=tmp)
+        register = tmp / ".council" / "henka-register.jsonl"
+        if r.returncode == 0:
+            failures.append("Test 7b FAIL: rejected command exited 0")
+        elif not register.exists():
+            failures.append(
+                "Test 7b FAIL: Henkaten record was not appended to .council/ in "
+                "the invoking cwd (still anchored to the plugin install dir?)"
+            )
+        else:
+            record = json.loads(
+                register.read_text(encoding="utf-8").splitlines()[-1]
+            )
+            schema_errors = validate_henka_record(record, schema)
+            if schema_errors:
+                for err in schema_errors:
+                    failures.append(f"Test 7b FAIL: Henkaten record schema error: {err}")
+            else:
+                print(
+                    "Test 7b PASS: rejection record lands in "
+                    "<cwd>/.council/henka-register.jsonl"
+                )
+
+    # ------------------------------------------------------------------
+    # Test 8: executed allowlisted commands inherit the invoking cwd
+    # ------------------------------------------------------------------
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp = pathlib.Path(tmpdir)
+        (tmp / "probe.json").write_text('{"anchor": "invoking-cwd"}', encoding="utf-8")
+        interp = "python" if shutil.which("python") else "python3"
+        r = run([f"{interp} -m json.tool probe.json"], cwd=tmp)
+        if r.returncode != 0 or "invoking-cwd" not in r.stdout:
+            failures.append(
+                "Test 8 FAIL: allowlisted command did not execute in the invoking cwd "
+                f"(exit {r.returncode}; stdout={r.stdout.strip()!r}; "
+                f"stderr={r.stderr.strip()!r})"
+            )
+        else:
+            print("Test 8 PASS: executed command ran in the invoking cwd")
+
+    # ------------------------------------------------------------------
+    # Test 9: verify .council/ was NOT created in the repo root
     # ------------------------------------------------------------------
     if council_dir.exists() and not council_existed_before:
         failures.append(
-            f"Test 7 FAIL: .council/ was created at {council_dir} during tests "
+            f"Test 9 FAIL: .council/ was created at {council_dir} during tests "
             "(sub-tests must isolate writes via temp dirs / --henka-output)"
         )
     else:
-        print("Test 7 PASS: .council/ was not created by the test run")
+        print("Test 9 PASS: .council/ was not created by the test run")
 
     # ------------------------------------------------------------------
     # Report

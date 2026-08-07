@@ -4,7 +4,7 @@ The trigger_history array is never overwritten — each invocation appends exact
 The final merged state is validated against schemas/effective-autonomy.schema.json before writing.
 
 Usage:
-    python scripts/update-effective-autonomy.py \\
+    python3 scripts/update-effective-autonomy.py \\
         --level 3 --reason "two-sprint-fail" --trigger-type consecutive-fail-drop \\
         --from-level 4
 
@@ -22,7 +22,16 @@ import sys
 from datetime import datetime, timezone
 from typing import Optional
 
-import jsonschema
+try:
+    import jsonschema
+except ModuleNotFoundError:
+    print(
+        "ERROR: the 'jsonschema' package is required but not installed.\n"
+        "  Install it with: python3 -m pip install -r requirements.txt\n"
+        "  (run from the plugin root; on Windows substitute 'python' for 'python3')",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 SCHEMA_PATH = pathlib.Path(__file__).parent.parent / "schemas" / "effective-autonomy.schema.json"

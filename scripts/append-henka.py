@@ -1,8 +1,8 @@
 """Validate a henka-record JSON object and append it to .council/henka-register.jsonl.
 
 Usage:
-    python scripts/append-henka.py --file <path-to-json>
-    echo '{"id": "HK-0001", ...}' | python scripts/append-henka.py
+    python3 scripts/append-henka.py --file <path-to-json>
+    echo '{"id": "HK-0001", ...}' | python3 scripts/append-henka.py
 
 Exit codes:
     0  — validated and appended successfully
@@ -18,7 +18,16 @@ import subprocess
 import sys
 from typing import Optional
 
-import jsonschema
+try:
+    import jsonschema
+except ModuleNotFoundError:
+    print(
+        "ERROR: the 'jsonschema' package is required but not installed.\n"
+        "  Install it with: python3 -m pip install -r requirements.txt\n"
+        "  (run from the plugin root; on Windows substitute 'python' for 'python3')",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 SCHEMA_PATH = pathlib.Path(__file__).parent.parent / "schemas" / "henka-record.schema.json"

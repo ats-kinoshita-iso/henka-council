@@ -69,7 +69,7 @@ Henkaten (informational).
 | `grep`, `rg` (read-only flags only) | Content search | `grep -n "feature_id" .harness/features.json` |
 | `cat`, `head`, `tail` | File read | `cat .harness/sprints.json` |
 | `jq` (explicit file path; no `-i` flag) | Structured JSON read | `jq '.sprints \| length' .harness/sprints.json` |
-| `python -m json.tool`, `python scripts/validate-*.py` | Schema validation only | `python -m json.tool .council/config.json` |
+| `python3 -m json.tool`, `python3 scripts/validate-*.py` (bare `python` equally accepted) | Schema validation only | `python3 -m json.tool .council/config.json` |
 | `test`, `[ ... ]` (POSIX file tests) | File-existence checks | `test -f .council/config.json` |
 
 ### Disallowed Verification Commands

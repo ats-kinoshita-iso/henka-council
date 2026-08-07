@@ -1,8 +1,8 @@
 """Enforce the §7.0.2 verification syntax allowlist and optionally execute the command.
 
 Usage:
-    python scripts/run-verification.py [--check-only] [--timeout N]
-                                       [--henka-output <path>] <verification_string>
+    python3 scripts/run-verification.py [--check-only] [--timeout N]
+                                        [--henka-output <path>] <verification_string>
 
 Exit codes:
     0  — command is allowlisted (and, in execution mode, completed successfully)
@@ -22,14 +22,17 @@ import sys
 from datetime import datetime, timezone
 
 # ---------------------------------------------------------------------------
-# Repository layout helpers
+# Path anchoring
 # ---------------------------------------------------------------------------
 
-# Project root is two levels above this script (scripts/ → repo root)
-_REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+# Sibling council scripts (append-henka.py) ship next to this file in the
+# plugin install directory.
+_SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 
-# Default council register path (may not exist)
-_DEFAULT_COUNCIL_DIR = _REPO_ROOT / ".council"
+# .council/ resolves against the invoking project's cwd, matching every other
+# council script (append-henka.py, update-effective-autonomy.py). The plugin
+# install directory never hosts the governed project's .council/.
+_DEFAULT_COUNCIL_DIR = pathlib.Path(".council")
 _DEFAULT_HENKA_REGISTER = _DEFAULT_COUNCIL_DIR / "henka-register.jsonl"
 
 # ---------------------------------------------------------------------------
@@ -210,7 +213,7 @@ def _build_henka_record(command_string: str) -> dict:
     detected_at = now.isoformat()
 
     # Build a safe verification command to re-check this rejection
-    safe_cmd = f"python scripts/run-verification.py --check-only {shlex.quote(command_string)}"
+    safe_cmd = f"python3 scripts/run-verification.py --check-only {shlex.quote(command_string)}"
 
     return {
         "henka_id": henka_id,
@@ -257,7 +260,7 @@ def _log_rejection(command_string: str, henka_output: pathlib.Path | None) -> No
         file=sys.stderr,
     )
 
-    append_script = _REPO_ROOT / "scripts" / "append-henka.py"
+    append_script = _SCRIPT_DIR / "append-henka.py"
 
     if henka_output is not None:
         # Test-isolation path: write directly via append-henka.py --output
@@ -375,13 +378,14 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # ---- Execute ----------------------------------------------------------
+    # No cwd override: the command runs in the invoking project's cwd, where
+    # the governed artifacts (.council/, .harness/) live.
     try:
         result = subprocess.run(
             command_string,
             shell=True,
             capture_output=True,
             text=True,
-            cwd=str(_REPO_ROOT),
             timeout=args.timeout,
         )
     except subprocess.TimeoutExpired:

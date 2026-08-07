@@ -354,7 +354,7 @@ From those claims, **randomly sample one** and re-run its `verification` command
 
 Invoke:
 ```
-python scripts/run-verification.py "<verification_string>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/run-verification.py "<verification_string>"
 ```
 
 `scripts/run-verification.py` enforces the §7.0.2 syntax allowlist (read-only

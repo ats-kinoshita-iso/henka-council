@@ -109,7 +109,7 @@ precise value.
   request on every supported runner. Emits a `::warning::` annotation if
   over budget. Does not fail the build.
 - **By hand**: any contributor can run
-  `python scripts/measure-projection-cost.py` (optionally with `--budget`,
+  `python3 scripts/measure-projection-cost.py` (optionally with `--budget`,
   `--strict`, `--json`, or `--repo-root` flags) at any time.
 
 ---

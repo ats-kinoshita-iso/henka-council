@@ -25,7 +25,9 @@ jobs:
           python-version: "3.10"
 
       - name: Install Python dependencies
-        run: pip install jsonschema pyyaml
+        # Script runtime deps come from requirements.txt; pyyaml is CI-only
+        # (used by the "Validate CI YAML" self-check step below).
+        run: pip install -r requirements.txt pyyaml
 
       - name: Run Bash hook fixture tests (Linux)
         if: runner.os == 'Linux'
@@ -55,6 +57,9 @@ jobs:
 
       - name: Run Python projection-cost test
         run: python tests/scripts/test-measure-projection-cost.py
+
+      - name: Run verification-allowlist test
+        run: python tests/scripts/test-run-verification.py
 
       - name: Run kickoff template schema-validation test
         run: python tests/test-kickoff-templates.py

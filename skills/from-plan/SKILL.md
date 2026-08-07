@@ -66,7 +66,7 @@ Validate that the body is non-empty. If empty, abort with a clear message.
 Invoke `scripts/classify-plan-intent.py`:
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/scripts/classify-plan-intent.py
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/classify-plan-intent.py
 ```
 
 The script inspects `.harness/` and `.council/` and emits a single JSON
@@ -99,7 +99,7 @@ Capture the `route` and `sprint` fields; both feed Step 3.
 Invoke `scripts/persist-plan.py`:
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/scripts/persist-plan.py \
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/persist-plan.py \
   --route <bootstrap|pre-sprint|course-correction> \
   [--sprint <NN>] \
   --plan-body <path-to-plan-body>
@@ -225,7 +225,7 @@ Sprint 1 demo: with an empty repo, invoke
 frontmatter and `plan_sha256` matches the body's sha256.
 
 Sprint 2 demo: from any repo state, run
-`python scripts/classify-plan-intent.py` to see the inferred route on
+`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/classify-plan-intent.py` to see the inferred route on
 stdout; then run `persist-plan.py` with that `--route`; then build the
 `plan-bridge` decision-log entry and feed it to
 `scripts/append-decision.py`. The full chain produces a persisted

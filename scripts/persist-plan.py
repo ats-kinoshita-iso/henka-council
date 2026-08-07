@@ -11,12 +11,12 @@ skill's mkdir -p semantics swallow the pre-created directory on subsequent
 invocation.
 
 Usage:
-    python scripts/persist-plan.py --route bootstrap --plan-body plan.md
-    python scripts/persist-plan.py --route pre-sprint --sprint 3 \\
+    python3 scripts/persist-plan.py --route bootstrap --plan-body plan.md
+    python3 scripts/persist-plan.py --route pre-sprint --sprint 3 \\
         --plan-body plan.md
-    python scripts/persist-plan.py --route course-correction --sprint 5 \\
+    python3 scripts/persist-plan.py --route course-correction --sprint 5 \\
         --plan-body plan.md
-    cat plan.md | python scripts/persist-plan.py --route bootstrap
+    cat plan.md | python3 scripts/persist-plan.py --route bootstrap
 
 Output:
     Prints the canonical path of the written file to stdout on success.
@@ -37,7 +37,16 @@ import subprocess
 import sys
 from typing import Optional
 
-import jsonschema
+try:
+    import jsonschema
+except ModuleNotFoundError:
+    print(
+        "ERROR: the 'jsonschema' package is required but not installed.\n"
+        "  Install it with: python3 -m pip install -r requirements.txt\n"
+        "  (run from the plugin root; on Windows substitute 'python' for 'python3')",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 SCHEMA_PATH = (

@@ -184,7 +184,7 @@ For each candidate record returned by the henkaten-detector agent:
    Henkaten records (per the controlled-artifacts append-only rule).
 
 ```
-python scripts/append-henka.py --record '{...}'
+echo '{...}' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/append-henka.py
 ```
 
 `scripts/append-henka.py` performs schema validation against

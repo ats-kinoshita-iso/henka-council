@@ -1,7 +1,7 @@
 """Validate a henka-record JSON file against the henka-record.schema.json schema.
 
 Usage:
-    python scripts/validate-henka-record.py <path-to-json-file>
+    python3 scripts/validate-henka-record.py <path-to-json-file>
 
 Exit codes:
     0 — valid
@@ -12,7 +12,16 @@ import sys
 import json
 import pathlib
 
-import jsonschema
+try:
+    import jsonschema
+except ModuleNotFoundError:
+    print(
+        "ERROR: the 'jsonschema' package is required but not installed.\n"
+        "  Install it with: python3 -m pip install -r requirements.txt\n"
+        "  (run from the plugin root; on Windows substitute 'python' for 'python3')",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 SCHEMA_PATH = pathlib.Path(__file__).parent.parent / "schemas" / "henka-record.schema.json"
