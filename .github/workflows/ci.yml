@@ -36,6 +36,7 @@ jobs:
           bash tests/hooks/test-enforce-reversibility.sh
           bash tests/hooks/test-log-tool-call.sh
           bash tests/hooks/test-rotate-audit-log.sh
+          bash tests/hooks/test-session-diagnostics.sh
 
       - name: Run PowerShell hook fixture tests (Windows)
         if: runner.os == 'Windows'
@@ -46,6 +47,7 @@ jobs:
           pwsh tests/hooks/win/test-enforce-reversibility.ps1
           pwsh tests/hooks/win/test-log-tool-call.ps1
           pwsh tests/hooks/win/test-rotate-audit-log.ps1
+          pwsh tests/hooks/win/test-session-diagnostics.ps1
 
       - name: Run Python rotation fixture test
         run: python tests/hooks/test-rotate-audit-log.py
@@ -55,6 +57,9 @@ jobs:
 
       - name: Run Python projection-cost test
         run: python tests/scripts/test-measure-projection-cost.py
+
+      - name: Run session-diagnostics test (cross-platform)
+        run: python tests/scripts/test-session-diagnostics.py
 
       - name: Run kickoff template schema-validation test
         run: python tests/test-kickoff-templates.py

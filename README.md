@@ -125,9 +125,19 @@ Add this `hooks` block to your target project's `.claude/settings.local.json`:
   "Stop": [
     { "hooks": [{ "type": "command",
                   "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-stopped-marker.sh" }] }
+  ],
+  "SessionEnd": [
+    { "hooks": [{ "type": "command",
+                  "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-diagnostics.sh" }] }
   ]
 }
 ```
+
+The `SessionEnd` hook is the diagnostics sensor (one event per session into
+`.council/diagnostics.jsonl`); it is not part of the kickoff self-check, which
+still requires only the four enforcement hooks. The `log-tool-call` and
+`session-diagnostics` hooks are thin wrappers over Python scripts in `scripts/`,
+so `python3` (or `python` on Windows) must be on the PATH of the session.
 
 On Windows targets, substitute `pwsh -NoLogo -NoProfile -File ${CLAUDE_PLUGIN_ROOT}/hooks/win/<name>.ps1`
 for each `bash ${CLAUDE_PLUGIN_ROOT}/hooks/<name>.sh`. The PowerShell hooks
