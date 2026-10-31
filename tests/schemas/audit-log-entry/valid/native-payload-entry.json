@@ -1,0 +1,13 @@
+{
+  "entry_id": "AUD-3f9c2a7b1d4e5f60",
+  "timestamp": "2026-10-31T17:00:00Z",
+  "event_type": "tool-call",
+  "agent_id": "session",
+  "session_id": "0c1d2e3f-4a5b-6c7d-8e9f-0a1b2c3d4e5f",
+  "tool_use_id": "toolu_01ABC",
+  "sprint_context": null,
+  "tool_name": "Edit",
+  "tool_input_summary": "file_path=src/app.py",
+  "tool_outcome": "success",
+  "andon_pull_count": null
+}
