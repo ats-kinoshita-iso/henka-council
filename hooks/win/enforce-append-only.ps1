@@ -7,6 +7,7 @@ $ProtectedFiles = @(
     '.council/henka-register.jsonl'
     '.council/decision-log.jsonl'
     '.council/audit-log.jsonl'
+    '.council/diagnostics.jsonl'
 )
 
 # Read envelope from stdin

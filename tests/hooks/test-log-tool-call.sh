@@ -169,6 +169,41 @@ else
     fail "Audit log walk-up anchoring failed (nested .council/.council or canonical path missing)"
 fi
 
+# --- Test 6: Native payload (tool_input, session_id, tool_use_id) into an initialized council ---
+PROJ6="${TMPDIR_TEST}/proj6"
+mkdir -p "$PROJ6/.council" "$PROJ6/.git" "$PROJ6/src"
+envelope='{"hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{"file_path":"src/app.py","old_string":"a","new_string":"b"},"tool_response":{"filePath":"src/app.py","success":true},"cwd":"'"$PROJ6"'/src","session_id":"sess-native-6","tool_use_id":"toolu_006"}'
+( unset CLAUDE_PROJECT_DIR; echo "$envelope" | AUDIT_LOG_PATH="" bash "$REPO/$HOOK" ) >/dev/null 2>&1
+python3 - "$PROJ6/.council/audit-log.jsonl" <<'PYEOF'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])
+assert p.exists(), "audit log not written for native payload"
+e = json.loads(p.read_text(encoding="utf-8").splitlines()[-1])
+assert e["tool_input_summary"] == "file_path=src/app.py", e["tool_input_summary"]
+assert e["session_id"] == "sess-native-6" and e["tool_use_id"] == "toolu_006", e
+assert e["andon_pull_count"] is None, e["andon_pull_count"]
+assert e["tool_outcome"] == "success" and e["event_type"] == "tool-call", e
+import jsonschema
+schema = json.loads(pathlib.Path("schemas/audit-log-entry.schema.json").read_text(encoding="utf-8"))
+jsonschema.Draft7Validator(schema).validate(e)
+print("NATIVE ENTRY VALID")
+PYEOF
+if (( $? == 0 )); then pass "Native payload: real file_path, session_id, tool_use_id, null andon count, schema-valid"; else fail "Native payload entry wrong or invalid"; fi
+
+# --- Test 7: No .council at the root -> nothing written, nothing created ---
+PROJ7="${TMPDIR_TEST}/proj7"
+mkdir -p "$PROJ7/.git" "$PROJ7/sub"
+envelope='{"tool_name":"Read","tool_input":{"file_path":"README.md"},"cwd":"'"$PROJ7"'/sub","session_id":"s7"}'
+( unset CLAUDE_PROJECT_DIR; echo "$envelope" | AUDIT_LOG_PATH="" bash "$REPO/$HOOK" ) >/dev/null 2>&1
+if [[ ! -e "$PROJ7/.council" ]]; then pass "No .council: no phantom directory, nothing written"; else fail "Phantom .council created in an uninitialized project"; fi
+
+# --- Test 8: andon_signal in a tool response is logged as an andon-signal event ---
+PROJ8="${TMPDIR_TEST}/proj8"
+mkdir -p "$PROJ8/.council" "$PROJ8/.git"
+envelope='{"tool_name":"Task","tool_input":{"prompt":"review"},"tool_response":{"content":"{\"andon_signal\":{\"type\":\"stop\"}}"},"cwd":"'"$PROJ8"'","session_id":"s8","tool_use_id":"toolu_008"}'
+( unset CLAUDE_PROJECT_DIR; echo "$envelope" | AUDIT_LOG_PATH="" bash "$REPO/$HOOK" ) >/dev/null 2>&1
+if grep -q '"event_type": "andon-signal"' "$PROJ8/.council/audit-log.jsonl" 2>/dev/null; then pass "andon_signal in tool response -> event_type andon-signal"; else fail "andon signal not detected"; fi
+
 # --- Results ---
 echo ""
 if (( ERRORS == 0 )); then

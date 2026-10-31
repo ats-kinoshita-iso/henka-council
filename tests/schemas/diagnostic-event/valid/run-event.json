@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "event_id": "0f1e2d3c-4b5a-4968-8776-655443322110",
+  "ts": "2026-10-31T18:05:00Z",
+  "source": "auto-mate",
+  "kind": "run",
+  "project": "bay-o-net",
+  "task_id": "t-042",
+  "run_path": "runs/bay-o-net/t-042-20261031T180500Z.json",
+  "session_id": "1b2c3d4e-0000-4000-8000-000000000042",
+  "approval_id": "APPR-0007",
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 1200,
+    "output_tokens": 9000,
+    "cache_read_input_tokens": 400000,
+    "cache_creation_input_tokens": 30000
+  },
+  "cost_usd": 0.91,
+  "cost_source": "claude-code-estimate",
+  "duration_ms": 840000,
+  "num_turns": 37,
+  "counts": {
+    "permission_denials": 0,
+    "subagents": 2
+  },
+  "outcome": "shipped",
+  "cap_hit": "none",
+  "labels": {
+    "crew_backend": "direct",
+    "layer": "crew"
+  }
+}

@@ -104,6 +104,14 @@ else
     fail "Write on non-protected file should be allowed (was blocked)"
 fi
 
+# Write on the diagnostics log must block (ADR-0006: append-only, hook-written)
+envelope='{"tool_name":"Write","tool_args":{"file_path":".council/diagnostics.jsonl"},"cwd":"/tmp","session_id":"test"}'
+if run_hook "$envelope"; then
+    fail "Write on .council/diagnostics.jsonl should be blocked (was allowed)"
+else
+    pass "Write on .council/diagnostics.jsonl is blocked"
+fi
+
 # Bash tool must always allow
 envelope='{"tool_name":"Bash","tool_args":{"command":"cat .council/audit-log.jsonl"},"cwd":"/tmp","session_id":"test"}'
 if run_hook "$envelope"; then

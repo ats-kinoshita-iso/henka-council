@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "event_id": "5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d",
+  "ts": "2026-10-31T18:10:00Z",
+  "source": "henkaten-council",
+  "kind": "projection-cost",
+  "project": "henka-council",
+  "labels": {
+    "projected_tokens": "7420",
+    "budget": "8000",
+    "over_budget": "false",
+    "files": "5"
+  },
+  "summary": "always-projected set: 7420 tokens against a budget of 8000"
+}

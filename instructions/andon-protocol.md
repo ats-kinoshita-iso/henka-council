@@ -375,7 +375,7 @@ When any `andon_signal` arrives:
       write acknowledgment first.
 - [ ] For `alert`: dispatch swarm (parallel, ≤4 agents, takt-bounded 10 min).
 - [ ] Do NOT filter, defer, or second-guess any signal.
-- [ ] Increment pull-rate counter in `audit-log.jsonl` for the issuing agent
+- [ ] Pull-rate is derived from `event_type: andon-signal` entries in `audit-log.jsonl` for the issuing agent (the PostToolUse hook keeps no counter; `andon_pull_count` is always null since the native-hook logger, HKP-0003)
       (weight 2 for stop, weight 1 for alert). Check anomaly thresholds.
 - [ ] If `alert` times out: escalate to `stop`.
 - [ ] On resolution: wait for originating agent's `resume` signal, then

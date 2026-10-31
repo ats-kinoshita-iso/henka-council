@@ -164,10 +164,21 @@ the absolute path to the plugin install (e.g.
           { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-stopped-marker.sh" }
         ]
       }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-diagnostics.sh" }
+        ]
+      }
     ]
   }
 }
 ```
+
+The `SessionEnd` entry registers the diagnostics sensor (`.council/diagnostics.jsonl`,
+one event per session). It is recommended but **optional**: the self-check passes
+on the four enforcement hooks alone, because diagnostics must never gate governance.
 
 ##### 1d.2 — Registration snippet (Windows / PowerShell)
 
@@ -181,6 +192,7 @@ log entry format. The four PS1 paths are:
 - `hooks/win/enforce-reversibility.ps1` (PreToolUse matcher: `Bash`)
 - `hooks/win/log-tool-call.ps1` (PostToolUse matcher: `*`)
 - `hooks/win/session-stopped-marker.ps1` (Stop hook)
+- `hooks/win/session-diagnostics.ps1` (SessionEnd hook, optional diagnostics sensor)
 
 ##### 1d.3 — What to do if hooks are missing
 

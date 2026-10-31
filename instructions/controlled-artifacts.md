@@ -46,7 +46,20 @@ The only sanctioned write path is the validated append scripts (Sprint 4).
 |---|---|
 | `.council/henka-register.jsonl` | `scripts/append-henka.py` (validates schema before appending) |
 | `.council/decision-log.jsonl` | `scripts/append-decision.py` (validates schema before appending) |
-| `.council/audit-log.jsonl` | PostToolUse hook only |
+| `.council/audit-log.jsonl` | PostToolUse hook only (`hooks/log-tool-call.*` over `scripts/log-tool-call.py`) |
+| `.council/diagnostics.jsonl` | SessionEnd hook only (`hooks/session-diagnostics.*` over `scripts/session-diagnostics.py`) and `scripts/measure-projection-cost.py --emit-event` |
+
+**Diagnostics log (`diagnostics.jsonl`):** one event per session, written by the
+`SessionEnd` hook (`hooks/session-diagnostics.*`, a thin wrapper over
+`scripts/session-diagnostics.py`), plus `projection-cost` events from
+`scripts/measure-projection-cost.py --emit-event`. Each event conforms to
+`schemas/diagnostic-event.schema.json`, a byte-identical copy of the schema owned by
+the cloud-catcher meta-repo (ADR-0006 there): tokens by model (deduplicated by
+request id), cost as Claude Code estimates it, tool calls by tool, subagents,
+compactions, retries, denials. It never contains prompt or response text. Rotate it
+with `scripts/rotate-audit-log.py --file .council/diagnostics.jsonl`. The audit
+logger (`hooks/log-tool-call.*` over `scripts/log-tool-call.py`) follows the same
+wrapper pattern, so bash and PowerShell share one implementation.
 
 **Append semantics for `henka-register.jsonl`:** to update a record, append a
 new entry with the same `henka_id` and updated `status`. Do NOT modify the

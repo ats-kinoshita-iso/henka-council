@@ -9,6 +9,7 @@ PROTECTED_FILES=(
     ".council/henka-register.jsonl"
     ".council/decision-log.jsonl"
     ".council/audit-log.jsonl"
+    ".council/diagnostics.jsonl"
 )
 
 # Read envelope from stdin
@@ -70,7 +71,7 @@ for protected in "${PROTECTED_FILES[@]}"; do
     # raw normalized path (catches the plain ".council/<log>" form when no cwd is present).
     if [[ "$abs_path" == "$protected" || "$abs_path" == *"/$protected" || "$norm_path" == "$protected" ]]; then
         echo "BLOCKED: Direct ${tool_name} on append-only log '${file_path}' is forbidden." >&2
-        echo "  Approved write paths: scripts/append-henka.py, scripts/append-decision.py" >&2
+        echo "  Approved write paths: scripts/append-henka.py, scripts/append-decision.py; audit-log and diagnostics are written by hooks only" >&2
         exit 1
     fi
 done

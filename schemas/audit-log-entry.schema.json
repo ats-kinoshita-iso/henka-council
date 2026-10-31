@@ -4,7 +4,12 @@
   "title": "AuditLogEntry",
   "description": "A single audit log record appended to audit-log.jsonl by the PostToolUse hook. Tracks all tool invocations and governance events.",
   "type": "object",
-  "required": ["entry_id", "timestamp", "event_type", "agent_id"],
+  "required": [
+    "entry_id",
+    "timestamp",
+    "event_type",
+    "agent_id"
+  ],
   "properties": {
     "entry_id": {
       "type": "string",
@@ -35,8 +40,19 @@
       "type": "string",
       "description": "Identifier of the agent or hook that generated this entry."
     },
+    "session_id": {
+      "type": "string",
+      "description": "Claude Code session id from the hook payload. The join key to diagnostics events, run records and transcripts (ADR-0006 in cloud-catcher)."
+    },
+    "tool_use_id": {
+      "type": "string",
+      "description": "Tool-use id from the hook payload, so a tool call can be matched to its transcript entry."
+    },
     "sprint_context": {
-      "type": ["integer", "null"],
+      "type": [
+        "integer",
+        "null"
+      ],
       "description": "Sprint number at the time of this event, or null if outside sprint execution."
     },
     "tool_name": {
@@ -49,13 +65,20 @@
     },
     "tool_outcome": {
       "type": "string",
-      "enum": ["success", "blocked", "error"],
+      "enum": [
+        "success",
+        "blocked",
+        "error"
+      ],
       "description": "Outcome of the tool invocation."
     },
     "andon_pull_count": {
-      "type": "integer",
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 0,
-      "description": "Running count of andon signals issued by this agent (for pull-rate anomaly detection per Q14)."
+      "description": "Legacy running count of andon signals. Always null since the native-hook logger: andon pull-rate is a policy evaluated over event_type=andon-signal entries, not a counter incremented while logging (HKP-0003)."
     },
     "verification_spot_check": {
       "type": "boolean",
@@ -67,7 +90,12 @@
     },
     "verification_result": {
       "type": "string",
-      "enum": ["match", "diverged", "error", "allowlist-rejected"],
+      "enum": [
+        "match",
+        "diverged",
+        "error",
+        "allowlist-rejected"
+      ],
       "description": "Result of the verification spot-check."
     },
     "linked_henka_id": {
