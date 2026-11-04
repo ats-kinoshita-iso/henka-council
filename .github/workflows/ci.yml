@@ -41,17 +41,24 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $ErrorActionPreference = 'Stop'
-          pwsh tests/hooks/win/test-enforce-append-only.ps1
-          pwsh tests/hooks/win/test-enforce-reversibility.ps1
-          pwsh tests/hooks/win/test-log-tool-call.ps1
-          pwsh tests/hooks/win/test-rotate-audit-log.ps1
+          # Run every test and fail the step if any of them fails. A bare list of
+          # pwsh lines fails the step only on the last one: a native command's
+          # exit code does not trigger $ErrorActionPreference.
+          $failed = @()
+          foreach ($t in 'test-enforce-append-only', 'test-enforce-reversibility', 'test-log-tool-call', 'test-rotate-audit-log') {
+            pwsh "tests/hooks/win/$t.ps1"
+            if ($LASTEXITCODE -ne 0) { $failed += $t }
+          }
+          if ($failed.Count -gt 0) { Write-Host ("FAILED: " + ($failed -join ', ')); exit 1 }
 
       - name: Run Python rotation fixture test
         run: python tests/hooks/test-rotate-audit-log.py
 
       - name: Run schema fixture suite (valid/invalid)
         run: python tests/test-schema-fixtures.py
+
+      - name: Check the plugin manifest loads in current Claude Code
+        run: python tests/test-plugin-manifest.py
 
       - name: Run Python projection-cost test
         run: python tests/scripts/test-measure-projection-cost.py

@@ -1,6 +1,8 @@
 # PreToolUse hook — block irreversible Bash commands when effective autonomy level < 5.
 # Reads Claude Code tool-call envelope JSON from stdin.
-# Exit 0 = allow.  Non-zero exit = block.
+# Exit 0 = allow.  Exit 2 = block: Claude Code blocks a PreToolUse call only on
+# exit 2 (any other non-zero code is a non-blocking error and the call proceeds);
+# stderr is shown to the model as the reason.
 # Requires PowerShell 7+ (pwsh).
 
 $IrreversiblePatterns = @(
@@ -93,7 +95,11 @@ if ($level -ge 5) {
 }
 
 # Extract the command
-$commandStr = if ($envelope.tool_args -and $envelope.tool_args.command) { $envelope.tool_args.command } else { '' }
+# Claude Code sends the tool arguments as tool_input; tool_args is the legacy
+# envelope shape, still accepted.
+$commandStr = ''
+if ($envelope.tool_input -and $envelope.tool_input.command) { $commandStr = $envelope.tool_input.command }
+elseif ($envelope.tool_args -and $envelope.tool_args.command) { $commandStr = $envelope.tool_args.command }
 
 if ([string]::IsNullOrWhiteSpace($commandStr)) {
     exit 0
@@ -105,7 +111,7 @@ foreach ($pattern in $IrreversiblePatterns) {
         [Console]::Error.WriteLine("BLOCKED: Irreversible command '$pattern' detected in Bash tool call.")
         [Console]::Error.WriteLine("  Effective autonomy level is $level (< 5). Irreversible operations require level 5.")
         [Console]::Error.WriteLine("  Command: $commandStr")
-        exit 1
+        exit 2
     }
 }
 
