@@ -3,7 +3,7 @@
 The "always-projected" set for the henkaten-council plugin is:
   - CLAUDE.md (Claude Code root convention; auto-loaded for any session in
     a directory that contains it)
-  - Files listed in .claude-plugin/plugin.json under "skills"
+  - The SKILL.md of each directory listed in .claude-plugin/plugin.json under "skills"
   - Files listed in .claude-plugin/plugin.json under "agents"
 
 These files consume working context every time a council skill runs. Without
@@ -54,7 +54,11 @@ def discover_always_projected_files(repo_root: pathlib.Path) -> list[pathlib.Pat
     if plugin_manifest.exists():
         manifest = json.loads(plugin_manifest.read_text(encoding="utf-8-sig"))
         for relpath in manifest.get("skills", []):
-            files.append(repo_root / relpath)
+            # Claude Code requires each skills entry to be a directory containing
+            # SKILL.md (with a "./" prefix); the projected file is that SKILL.md.
+            # A legacy entry naming the file itself is still accepted.
+            path = repo_root / relpath
+            files.append(path / "SKILL.md" if path.is_dir() else path)
         for relpath in manifest.get("agents", []):
             files.append(repo_root / relpath)
     return files

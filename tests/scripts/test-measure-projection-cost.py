@@ -74,7 +74,7 @@ def _make_fixture_repo(
 
 
 def main() -> int:
-    total = 11
+    total = 12
     failures: list[str] = []
 
     # -----------------------------------------------------------------------
@@ -361,6 +361,38 @@ def main() -> int:
                 failures.append(msg)
         else:
             msg = f"BOM fixture crashed: rc={r.returncode}; stderr={r.stderr.strip()!r}"
+            _fail(n, total, msg)
+            failures.append(msg)
+
+    # -----------------------------------------------------------------------
+    # Assertion 12: a "./" skills entry naming a directory is measured via its
+    # SKILL.md (the manifest form current Claude Code requires)
+    # -----------------------------------------------------------------------
+    n = 12
+    with tempfile.TemporaryDirectory() as td:
+        tmpdir = pathlib.Path(td)
+        _make_fixture_repo(
+            tmpdir,
+            claude_md_text="root file\n",
+            skill_text="one two three four five six seven eight nine ten\n",
+            agent_text="agent body\n",
+        )
+        (tmpdir / ".claude-plugin" / "plugin.json").write_text(
+            json.dumps({"name": "fixture", "skills": ["./skills/test"], "agents": ["./agents/test.md"]}),
+            encoding="utf-8",
+        )
+        r = run(["--repo-root", str(tmpdir), "--json"])
+        try:
+            data = json.loads(r.stdout) if r.returncode == 0 else {}
+            paths = [f["path"] for f in data.get("files", [])]
+            if r.returncode == 0 and "skills/test/SKILL.md" in paths and "agents/test.md" in paths:
+                _pass(n, total, "./ directory skills entry measured via its SKILL.md")
+            else:
+                msg = f"directory skills entry not measured: rc={r.returncode}; paths={paths!r}; stderr={r.stderr.strip()!r}"
+                _fail(n, total, msg)
+                failures.append(msg)
+        except json.JSONDecodeError as exc:
+            msg = f"directory-entry fixture --json not parseable: {exc}"
             _fail(n, total, msg)
             failures.append(msg)
 
