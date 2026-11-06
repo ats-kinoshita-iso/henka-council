@@ -1,0 +1,9 @@
+{"type":"mode","sessionId":"00000000-0000-4000-8000-000000000003"}
+{"type":"file-history-snapshot"}
+{"type":"user","uuid":"e0000031-0000-4000-8000-000000000000","parentUuid":null,"sessionId":"00000000-0000-4000-8000-000000000003","timestamp":"2026-11-04T21:00:08.398Z","isSidechain":false,"isMeta":true,"version":"2.1.318","entrypoint":"cli","gitBranch":"branch-1","message":{"content":"<redacted/>"}}
+{"type":"user","uuid":"e0000032-0000-4000-8000-000000000000","parentUuid":"e0000031-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000003","timestamp":"2026-11-04T21:00:08.344Z","isSidechain":false,"version":"2.1.318","entrypoint":"cli","gitBranch":"branch-1","message":{"content":"<command-name>/clear</command-name>"}}
+{"type":"system","uuid":"e0000033-0000-4000-8000-000000000000","parentUuid":"e0000032-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000003","timestamp":"2026-11-04T21:00:08.394Z","isSidechain":false,"isMeta":false,"version":"2.1.318","entrypoint":"cli","gitBranch":"branch-1","subtype":"local_command"}
+{"type":"cost-state","totalCostUSD":0,"totalDuration":4467,"totalAPIDuration":0,"startTime":1793826008391,"modelUsage":{},"sessionId":"00000000-0000-4000-8000-000000000003"}
+{"type":"file-history-snapshot"}
+{"type":"last-prompt","leafUuid":"e0000033-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000003"}
+{"type":"cost-state","totalCostUSD":0,"totalDuration":4485,"totalAPIDuration":0,"startTime":1793826008391,"modelUsage":{},"sessionId":"00000000-0000-4000-8000-000000000003"}

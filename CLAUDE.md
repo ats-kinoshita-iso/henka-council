@@ -61,10 +61,11 @@ may overwrite or delete them:
 
 Any write attempt to these files must go through the approved append scripts
 (`scripts/append-henka.py`, `scripts/append-decision.py`); the audit and
-diagnostics logs are written only by hooks. The `hooks/enforce-append-only.sh`
-hook enforces this at the `PreToolUse` level. The diagnostics log is one event
-per session (tokens, cost, tool use; never prompt text) per
-`schemas/diagnostic-event.schema.json`; details in `instructions/controlled-artifacts.md`.
+diagnostics logs only by hooks, the diagnostics backfill and
+`measure-projection-cost.py --emit-event`.
+The `hooks/enforce-append-only.sh` hook enforces this at the `PreToolUse` level.
+Diagnostics: one event per settled process lifetime (ADR-0006 A1, never prompt
+text), `instructions/controlled-artifacts.md`.
 
 The following files are **sacred** and require Level 5 (human) approval before
 any modification:

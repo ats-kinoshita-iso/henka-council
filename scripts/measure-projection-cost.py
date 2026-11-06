@@ -32,6 +32,7 @@ import json
 import pathlib
 import re
 import sys
+import time
 from typing import Optional
 
 DEFAULT_REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -202,9 +203,12 @@ def emit_projection_event(repo_root: pathlib.Path, payload: dict) -> bool:
                 f"against a budget of {payload['budget']}"
             ),
         }
-        with (council / "diagnostics.jsonl").open("a", encoding="utf-8", newline="\n") as handle:
-            handle.write(json.dumps(event, ensure_ascii=False) + "\n")
-        return True
+        # The session diagnostics append protocol: validated, under the ledger lock,
+        # one LF-terminated line after a newline repair (scripts/_diaglib.py).
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        import _diaglib as dl  # noqa: E402
+
+        return bool(dl.append_events(council / dl.LEDGER_NAME, [event], give_up_at=time.monotonic() + 10.0))
     except Exception as exc:  # never fail the measurement because of diagnostics
         print(f"WARNING: could not append projection-cost event: {exc}", file=sys.stderr)
         return False

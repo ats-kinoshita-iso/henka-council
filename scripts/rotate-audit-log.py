@@ -4,9 +4,13 @@ Produces a timestamped gzip archive, truncates the current file to empty,
 and appends a DEC entry (via scripts/append-decision.py) with the SHA-256
 of the archive file.
 
+Rotating .council/diagnostics.jsonl holds the ledger lock that the session
+diagnostics writers take (scripts/_diaglib.py), so an event appended while the
+file is archived lands in the archive or in the live file, never in neither.
+
 CLI:
     python scripts/rotate-audit-log.py [--file <path>] [--threshold-bytes <int>]
-                                       [--decision-output <path>]
+                                       [--decision-output <path>] [--lock-timeout <s>]
 
 Exit codes:
     0  -- success (rotation performed or not needed)
@@ -15,18 +19,33 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import gzip
 import hashlib
 import json
 import pathlib
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
+from typing import Any, ContextManager
 
 
 DEFAULT_AUDIT_LOG = pathlib.Path(".council") / "audit-log.jsonl"
 DEFAULT_DECISION_LOG = pathlib.Path(".council") / "decision-log.jsonl"
 DEFAULT_THRESHOLD = 52428800  # 50 MB
+DIAGNOSTICS_NAME = "diagnostics.jsonl"
+DEFAULT_LOCK_TIMEOUT_S = 10.0
+
+
+def ledger_lock(file_path: pathlib.Path, timeout_s: float) -> ContextManager[Any]:
+    """The diagnostics ledger lock for diagnostics.jsonl; no lock for other files."""
+    if file_path.name != DIAGNOSTICS_NAME:
+        return contextlib.nullcontext()
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+    import _diaglib as dl  # noqa: E402  (only diagnostics rotation needs it)
+
+    return dl.LedgerLock(dl.lock_path(dl.ensure_run_dir(file_path)), time.monotonic() + timeout_s)
 
 
 def compute_sha256(path: pathlib.Path) -> str:
@@ -63,6 +82,7 @@ def rotate(
     file_path: pathlib.Path,
     decision_output: pathlib.Path,
     threshold_bytes: int,
+    lock_timeout_s: float = DEFAULT_LOCK_TIMEOUT_S,
 ) -> int:
     """Perform rotation if file_path exceeds threshold_bytes.
 
@@ -81,26 +101,33 @@ def rotate(
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
     archive_path = file_path.parent / f"{file_path.stem}.{ts}{file_path.suffix}.gz"
 
-    # Read original content
-    original_bytes = file_path.read_bytes()
-    original_size = len(original_bytes)
-
-    # Write gzip archive
     try:
-        with gzip.open(archive_path, "wb") as gz:
-            gz.write(original_bytes)
-    except OSError as exc:
-        print(f"ERROR: failed to write archive {archive_path}: {exc}", file=sys.stderr)
-        return 1
+        with ledger_lock(file_path, lock_timeout_s):
+            # Read original content
+            original_bytes = file_path.read_bytes()
+            original_size = len(original_bytes)
 
-    # Compute SHA-256 of the archive file (not the raw bytes)
-    sha256_hex = compute_sha256(archive_path)
+            # Write gzip archive
+            try:
+                with gzip.open(archive_path, "wb") as gz:
+                    gz.write(original_bytes)
+            except OSError as exc:
+                print(f"ERROR: failed to write archive {archive_path}: {exc}", file=sys.stderr)
+                return 1
 
-    # Truncate the current log (write empty bytes)
-    try:
-        file_path.write_bytes(b"")
-    except OSError as exc:
-        print(f"ERROR: failed to truncate {file_path}: {exc}", file=sys.stderr)
+            # Compute SHA-256 of the archive file (not the raw bytes)
+            sha256_hex = compute_sha256(archive_path)
+
+            # Truncate the current log (write empty bytes)
+            try:
+                file_path.write_bytes(b"")
+            except OSError as exc:
+                print(f"ERROR: failed to truncate {file_path}: {exc}", file=sys.stderr)
+                return 1
+    except Exception as exc:  # the ledger lock was not released in time
+        if type(exc).__name__ != "DeadlineExceeded":
+            raise
+        print(f"ERROR: {file_path} is locked by a writer; not rotated", file=sys.stderr)
         return 1
 
     # Build DEC entry conforming to schemas/decision-log-entry.schema.json
@@ -164,8 +191,14 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_DECISION_LOG,
         help=f"Path to the decision log for the DEC entry (default: {DEFAULT_DECISION_LOG}).",
     )
+    parser.add_argument(
+        "--lock-timeout",
+        type=float,
+        default=DEFAULT_LOCK_TIMEOUT_S,
+        help="Seconds to wait for the diagnostics ledger lock (diagnostics.jsonl only).",
+    )
     args = parser.parse_args(argv)
-    return rotate(args.file, args.decision_output, args.threshold_bytes)
+    return rotate(args.file, args.decision_output, args.threshold_bytes, args.lock_timeout)
 
 
 if __name__ == "__main__":

@@ -35,6 +35,12 @@ _council_project_root() {
 # Read and discard stdin (Claude Code may send a minimal envelope)
 cat > /dev/null 2>&1 || true
 
+# Crew guard (ADR-0006 A1 D1.9): an auto-mate crew or gate commits whatever it
+# leaves behind, so with AUTOMATE_RUN set the council writes nothing.
+if [[ -n "${AUTOMATE_RUN:-}" ]]; then
+    exit 0
+fi
+
 # Anchor the progress-marker path to the project root unless an explicit override was given.
 if [[ -z "$TARGET_FILE" ]]; then
     TARGET_FILE="$(_council_project_root)/.harness/progress.md"

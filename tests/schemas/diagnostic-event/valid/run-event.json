@@ -9,7 +9,7 @@
   "run_path": "runs/bay-o-net/t-042-20261031T180500Z.json",
   "session_id": "1b2c3d4e-0000-4000-8000-000000000042",
   "approval_id": "APPR-0007",
-  "model": "claude-opus-5-5",
+  "model": "model-a",
   "usage": {
     "input_tokens": 1200,
     "output_tokens": 9000,

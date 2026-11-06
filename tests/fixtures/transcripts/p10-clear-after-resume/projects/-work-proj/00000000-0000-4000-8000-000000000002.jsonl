@@ -1,0 +1,6 @@
+{"type":"mode","sessionId":"00000000-0000-4000-8000-000000000002"}
+{"type":"user","uuid":"e0000028-0000-4000-8000-000000000000","parentUuid":null,"sessionId":"00000000-0000-4000-8000-000000000002","timestamp":"2026-11-04T20:59:45.972Z","isSidechain":false,"isMeta":true,"version":"2.1.318","entrypoint":"sdk-cli","gitBranch":"branch-1","message":{"content":"<redacted/>"}}
+{"type":"user","uuid":"e0000029-0000-4000-8000-000000000000","parentUuid":"e0000028-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000002","timestamp":"2026-11-04T20:59:45.882Z","isSidechain":false,"version":"2.1.318","entrypoint":"sdk-cli","gitBranch":"branch-1","message":{"content":"<command-name>/clear</command-name>"}}
+{"type":"system","uuid":"e0000030-0000-4000-8000-000000000000","parentUuid":"e0000029-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000002","timestamp":"2026-11-04T20:59:45.970Z","isSidechain":false,"isMeta":false,"version":"2.1.318","entrypoint":"sdk-cli","gitBranch":"branch-1","subtype":"local_command"}
+{"type":"last-prompt","leafUuid":"e0000030-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000002"}
+{"type":"cost-state","totalCostUSD":0,"totalDuration":88,"totalAPIDuration":0,"startTime":1793825985927,"modelUsage":{},"sessionId":"00000000-0000-4000-8000-000000000002"}
