@@ -55,6 +55,9 @@ jobs:
       - name: Run schema fixture suite (valid/invalid)
         run: python tests/test-schema-fixtures.py
 
+      - name: Run diagnostic-event schema drift test (pinned to cloud-catcher)
+        run: python tests/test-diagnostic-schema-drift.py
+
       - name: Run Python projection-cost test
         run: python tests/scripts/test-measure-projection-cost.py
 

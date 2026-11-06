@@ -1,7 +1,7 @@
 # Violation: missing required field `kind`
 
 ## Rule violated
-`diagnostic-event.schema.json` lists `kind` under `required`.
+`kind` is listed under the schema's `required`. Without it the event is not a session event either, so its `lifetime` also trips the `not` rule; the documented reason is the missing field.
 
 ## Expected jsonschema error keyword
 `required`

@@ -176,9 +176,9 @@ the absolute path to the plugin install (e.g.
 }
 ```
 
-The `SessionEnd` entry registers the diagnostics sensor (`.council/diagnostics.jsonl`,
-one event per session). It is recommended but **optional**: the self-check passes
-on the four enforcement hooks alone, because diagnostics must never gate governance.
+The `SessionEnd` hook writes `.council/diagnostics.jsonl`: one event per settled
+process lifetime (ADR-0006 A1), as does `session-diagnostics.py --backfill`.
+Recommended but **optional**: diagnostics never gate the four-hook self-check.
 
 ##### 1d.2 — Registration snippet (Windows / PowerShell)
 

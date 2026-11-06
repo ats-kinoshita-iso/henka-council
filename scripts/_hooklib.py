@@ -3,6 +3,10 @@
 Used by scripts/log-tool-call.py (PostToolUse) and scripts/session-diagnostics.py
 (SessionEnd). Stdlib only: hooks run on every tool call and must never fail or
 pull in a dependency that is missing on a host.
+
+Crew guard (cloud-catcher ADR-0006 A1 D1.9): when AUTOMATE_RUN is set, auto-mate is
+running the session as a crew or gate and commits whatever it leaves behind, so the
+council's hooks write nothing (see crew_guard()).
 """
 from __future__ import annotations
 
@@ -17,18 +21,29 @@ from typing import Any, Optional
 
 
 def read_payload() -> dict:
-    """Return the hook payload from stdin as a dict; {} when absent or malformed."""
+    """Return the hook payload from stdin as a dict; {} when absent or malformed.
+
+    Claude Code sends raw UTF-8. stdin is read as bytes and decoded as UTF-8, never
+    in the locale's code page, so a non-ASCII cwd or path survives on Windows too.
+    """
     try:
-        raw = sys.stdin.read()
+        stream = getattr(sys.stdin, "buffer", None)
+        raw_bytes = stream.read() if stream is not None else sys.stdin.read().encode("utf-8")
     except Exception:
         return {}
-    if not raw or not raw.strip():
+    raw = raw_bytes.decode("utf-8", errors="replace").lstrip("\ufeff")
+    if not raw.strip():
         return {}
     try:
         data = json.loads(raw)
     except Exception:
         return {}
     return data if isinstance(data, dict) else {}
+
+
+def crew_guard() -> bool:
+    """True when the council's hooks must write nothing (AUTOMATE_RUN is set)."""
+    return bool(os.environ.get("AUTOMATE_RUN"))
 
 
 def resolve_root(cwd: Optional[str]) -> pathlib.Path:
@@ -58,13 +73,27 @@ def council_dir(root: pathlib.Path) -> Optional[pathlib.Path]:
 
 def sprint_context(root: pathlib.Path) -> Any:
     """current_sprint from <root>/.harness/sprint-state.json, or None."""
+    return harness_context(root)[0]
+
+
+def harness_context(root: pathlib.Path) -> tuple[Any, Optional[int]]:
+    """(current_sprint, current_phase) from <root>/.harness/sprint-state.json.
+
+    Phases reuse sprint numbers, so a sprint is only meaningful with its phase.
+    The sprint is an int or a string; the phase an int; anything else is None.
+    """
     path = root / ".harness" / "sprint-state.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8-sig"))
     except Exception:
-        return None
-    value = data.get("current_sprint") if isinstance(data, dict) else None
-    return value if isinstance(value, (int, str)) and not isinstance(value, bool) else None
+        return None, None
+    if not isinstance(data, dict):
+        return None, None
+    sprint = data.get("current_sprint")
+    phase = data.get("current_phase")
+    sprint = sprint if isinstance(sprint, (int, str)) and not isinstance(sprint, bool) else None
+    phase = phase if isinstance(phase, int) and not isinstance(phase, bool) else None
+    return sprint, phase
 
 
 def now_iso() -> str:
@@ -75,13 +104,13 @@ def new_hex(length: int = 16) -> str:
     return uuid.uuid4().hex[:length]
 
 
-def git_output(root: pathlib.Path, *args: str) -> Optional[str]:
+def git_output(root: pathlib.Path, *args: str, timeout: float = 5.0) -> Optional[str]:
     try:
         completed = subprocess.run(
             ["git", "-C", str(root), *args],
             capture_output=True,
             text=True,
-            timeout=5,
+            timeout=timeout,
             check=False,
         )
     except Exception:

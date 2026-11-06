@@ -47,19 +47,63 @@ The only sanctioned write path is the validated append scripts (Sprint 4).
 | `.council/henka-register.jsonl` | `scripts/append-henka.py` (validates schema before appending) |
 | `.council/decision-log.jsonl` | `scripts/append-decision.py` (validates schema before appending) |
 | `.council/audit-log.jsonl` | PostToolUse hook only (`hooks/log-tool-call.*` over `scripts/log-tool-call.py`) |
-| `.council/diagnostics.jsonl` | SessionEnd hook only (`hooks/session-diagnostics.*` over `scripts/session-diagnostics.py`) and `scripts/measure-projection-cost.py --emit-event` |
+| `.council/diagnostics.jsonl` | SessionEnd hook (`hooks/session-diagnostics.*` over `scripts/session-diagnostics.py`), its backfill command (`scripts/session-diagnostics.py --backfill`) and `scripts/measure-projection-cost.py --emit-event` |
 
-**Diagnostics log (`diagnostics.jsonl`):** one event per session, written by the
-`SessionEnd` hook (`hooks/session-diagnostics.*`, a thin wrapper over
-`scripts/session-diagnostics.py`), plus `projection-cost` events from
-`scripts/measure-projection-cost.py --emit-event`. Each event conforms to
-`schemas/diagnostic-event.schema.json`, a byte-identical copy of the schema owned by
-the cloud-catcher meta-repo (ADR-0006 there): tokens by model (deduplicated by
-request id), cost as Claude Code estimates it, tool calls by tool, subagents,
-compactions, retries, denials. It never contains prompt or response text. Rotate it
-with `scripts/rotate-audit-log.py --file .council/diagnostics.jsonl`. The audit
-logger (`hooks/log-tool-call.*` over `scripts/log-tool-call.py`) follows the same
-wrapper pattern, so bash and PowerShell share one implementation.
+**Diagnostics log (`diagnostics.jsonl`):** one `kind: session` event (schema 1.1)
+per settled process lifetime (cloud-catcher ADR-0006 amendment A1, Stage 1), plus
+`projection-cost` events from `scripts/measure-projection-cost.py --emit-event`.
+It never contains prompt or response text, tool inputs or tool outputs.
+
+- *A lifetime* is one Claude Code process's tenure on one session id, from its start
+  (startup, resume, fork or `/clear`) to the `cost-state` entry that process writes
+  when it exits. It is recorded once that closing `cost-state` exists, and only when
+  it made a request, a tool call or a compaction or spent anything.
+- *Every measure is a delta over the lifetime.* Tokens by model are counted once per
+  requestId over its span of the transcript and of the session's subagent files
+  (`<session_id>/subagents/**/agent-*.jsonl`) in its time window, with entries a fork
+  copied from its parent left out. `cost_usd` is the closing `cost-state` minus the
+  one restored at start (`cost_source: claude-code-estimate`);
+  `cost_state_usage_by_model` is the same delta of `modelUsage`, including calls no
+  transcript shows. `lifetime.cost_lineage`, `cum_cost_start_usd` and
+  `cum_cost_end_usd` are anchors and are never summed. A session's total is the sum
+  of its events, never its latest event.
+- *Identity.* `event_id` is UUIDv5 in namespace `5f0c2b8e-2a7d-4d38-9a51-1c2f1d6e2006`
+  over `session-lifetime|<session_id>|cs:<startTime>:<totalDuration>` of the closing
+  `cost-state`, and `ts` is the lifetime's latest entry, never the hook's clock, so
+  every writer produces the same line for the same lifetime.
+- *Writers.* One deriver (`scripts/session_lifetimes.py`) computes every event. The
+  `SessionEnd` hook calls it for the lifetime that just closed; for a `/clear`
+  predecessor, whose closing `cost-state` is written only after its own hook
+  returned, the hook leaves a note keyed by `CLAUDE_PID` in `.council/state/run/` (a
+  directory that ignores itself in git) and the successor's `SessionEnd` in the same
+  process settles it. `scripts/session-diagnostics.py --backfill <transcript.jsonl>`
+  derives every settled lifetime of a transcript afterwards (`--print` only prints).
+- *Append protocol.* An `event_id` already in the ledger or in its newest rotated
+  archive is skipped. Appends hold an exclusive lock file and write one LF-terminated
+  UTF-8 line per event, validated against `schemas/diagnostic-event.schema.json`
+  (with `jsonschema` when installed, otherwise with structural checks).
+- *Time budget.* The hook does about 1.0 s of work (`DIAGNOSTICS_BUDGET_MS`); work that
+  would take longer is left as a pending note that a later `SessionEnd` of the same
+  project settles. Claude Code ignores a `timeout` declared for a plugin's
+  `SessionEnd` hook; `CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS` in the settings `env`
+  raises its budget (seen in `claude -p` probes). The opt-in live canary
+  `tests/live/test-sessionend-budget-canary.sh` checks that the installed Claude Code
+  still lets a 1.0 s SessionEnd hook finish and cancels a 2.5 s one.
+- *Crew guard.* With `AUTOMATE_RUN` set (auto-mate crews and gates), the SessionEnd,
+  PostToolUse and Stop hooks write nothing.
+- *Stage 1 limits* (no `SessionStart` hook yet): a SIGKILLed lifetime gets no event
+  of its own and its tokens land in the next event as `lifetime.coverage.shortfall`;
+  a fork's base comes from cost lineage (the same-lineage parent transcript), and a
+  fork whose parent is not found has `cost_usd: null` and
+  `coverage.fork_parent: not-found`; a lost line comes back only through a backfill;
+  a lifetime that crosses UTC midnight carries no `lifetime.days` bins yet.
+- *Schema.* `schemas/diagnostic-event.schema.json` is a byte-identical copy of the
+  schema owned by the cloud-catcher meta-repo (ADR-0006 there);
+  `tests/test-diagnostic-schema-drift.py` pins the upstream commit and SHA-256.
+
+Rotate the log with `scripts/rotate-audit-log.py --file .council/diagnostics.jsonl`.
+The audit logger (`hooks/log-tool-call.*` over `scripts/log-tool-call.py`) follows the
+same wrapper pattern, so bash and PowerShell share one implementation.
 
 **Append semantics for `henka-register.jsonl`:** to update a record, append a
 new entry with the same `henka_id` and updated `status`. Do NOT modify the

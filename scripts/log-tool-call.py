@@ -17,6 +17,7 @@ Invariants (HKP-0003, auto-mate/docs/handoff/council-native-hooks):
   ``command=...``, ``pattern=...``, else the first scalar input);
 - ``andon_pull_count`` is always ``null``: andon is a policy evaluated over
   the log, not a counter incremented while logging;
+- with ``AUTOMATE_RUN`` set (an auto-mate crew or gate) nothing is written;
 - the script always exits 0 and swallows its own errors.
 
 Invoked by hooks/log-tool-call.sh and hooks/win/log-tool-call.ps1.
@@ -32,6 +33,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from _hooklib import (  # noqa: E402
     append_jsonl,
     council_dir,
+    crew_guard,
     new_hex,
     now_iso,
     read_payload,
@@ -87,6 +89,8 @@ def is_andon(payload: dict) -> bool:
 
 
 def main() -> int:
+    if crew_guard():
+        return 0  # auto-mate crew or gate: write nothing (ADR-0006 A1 D1.9)
     payload = read_payload()
     if not payload:
         return 0

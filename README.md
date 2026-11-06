@@ -133,11 +133,19 @@ Add this `hooks` block to your target project's `.claude/settings.local.json`:
 }
 ```
 
-The `SessionEnd` hook is the diagnostics sensor (one event per session into
-`.council/diagnostics.jsonl`); it is not part of the kickoff self-check, which
-still requires only the four enforcement hooks. The `log-tool-call` and
-`session-diagnostics` hooks are thin wrappers over Python scripts in `scripts/`,
-so `python3` (or `python` on Windows) must be on the PATH of the session.
+The `SessionEnd` hook is the diagnostics sensor. It appends one event per
+settled process lifetime to `.council/diagnostics.jsonl` (cloud-catcher ADR-0006
+amendment A1): a lifetime is one Claude Code process's tenure on one session id,
+closed by the `cost-state` entry that process writes at exit, and every number in
+the event is a delta over it, so a session's total is the sum of its events. A
+`/clear` predecessor is recorded at its successor's `SessionEnd` in the same
+process, and `python3 scripts/session-diagnostics.py --backfill <transcript.jsonl>`
+derives the same events (same ids) from a transcript afterwards. With
+`AUTOMATE_RUN` set (auto-mate crews and gates) no council hook writes anything.
+The hook is not part of the kickoff self-check, which still requires only the
+four enforcement hooks. The `log-tool-call` and `session-diagnostics` hooks are
+thin wrappers over Python scripts in `scripts/`, so `python3` (or `py`/`python`
+on Windows) must be on the PATH of the session.
 
 On Windows targets, substitute `pwsh -NoLogo -NoProfile -File ${CLAUDE_PLUGIN_ROOT}/hooks/win/<name>.ps1`
 for each `bash ${CLAUDE_PLUGIN_ROOT}/hooks/<name>.sh`. The PowerShell hooks
