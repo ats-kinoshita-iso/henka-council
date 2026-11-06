@@ -17,7 +17,7 @@
 {"type":"api-request-blob","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"api-request-blob","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"api-request","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:48:48.254Z","version":"2.1.318"}
-{"type":"last-prompt","sessionId":"00000000-0000-4000-8000-000000000001"}
+{"type":"last-prompt","leafUuid":"e0000011-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"mode","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"permission-mode","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"atis-latch","sessionId":"00000000-0000-4000-8000-000000000001"}
@@ -26,7 +26,7 @@
 {"type":"attachment","uuid":"e0000013-0000-4000-8000-000000000000","parentUuid":"e0000012-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:48:49.649Z","isSidechain":false,"version":"2.1.318","entrypoint":"cli","gitBranch":"branch-1"}
 {"type":"system","uuid":"e0000014-0000-4000-8000-000000000000","parentUuid":"e0000013-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:48:49.712Z","isSidechain":false,"version":"2.1.318","entrypoint":"cli","gitBranch":"branch-1","subtype":"stop_hook_summary"}
 {"type":"system","uuid":"e0000015-0000-4000-8000-000000000000","parentUuid":"e0000014-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:48:49.718Z","isSidechain":false,"isMeta":false,"version":"2.1.318","entrypoint":"cli","gitBranch":"branch-1","subtype":"turn_duration"}
-{"type":"last-prompt","sessionId":"00000000-0000-4000-8000-000000000001"}
+{"type":"last-prompt","leafUuid":"e0000015-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"ai-title","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"mode","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"permission-mode","sessionId":"00000000-0000-4000-8000-000000000001"}

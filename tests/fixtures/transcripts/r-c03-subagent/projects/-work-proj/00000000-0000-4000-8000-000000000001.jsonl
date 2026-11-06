@@ -18,7 +18,7 @@
 {"type":"attachment","uuid":"e0000013-0000-4000-8000-000000000000","parentUuid":"e0000012-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T06:40:43.149Z","isSidechain":false,"version":"2.1.318","entrypoint":"remote_mobile","gitBranch":"branch-1"}
 {"type":"attachment","uuid":"e0000014-0000-4000-8000-000000000000","parentUuid":"e0000013-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T06:40:43.179Z","isSidechain":false,"version":"2.1.318","entrypoint":"remote_mobile","gitBranch":"branch-1"}
 {"type":"attachment","uuid":"e0000015-0000-4000-8000-000000000000","parentUuid":"e0000014-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T06:40:43.180Z","isSidechain":false,"version":"2.1.318","entrypoint":"remote_mobile","gitBranch":"branch-1"}
-{"type":"last-prompt","sessionId":"00000000-0000-4000-8000-000000000001"}
+{"type":"last-prompt","leafUuid":"e0000015-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"ai-title","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"atis-latch","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"tools-used","sessionId":"00000000-0000-4000-8000-000000000001"}
@@ -32,5 +32,5 @@
 {"type":"attachment","uuid":"e0000021-0000-4000-8000-000000000000","parentUuid":"e0000020-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T06:40:47.621Z","isSidechain":false,"version":"2.1.318","entrypoint":"remote_mobile","gitBranch":"branch-1"}
 {"type":"assistant","uuid":"e0000022-0000-4000-8000-000000000000","parentUuid":"e0000021-0000-4000-8000-000000000000","requestId":"req_000003","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T06:40:48.880Z","isSidechain":false,"version":"2.1.318","entrypoint":"remote_mobile","gitBranch":"branch-1","message":{"model":"model-a","usage":{"input_tokens":2,"output_tokens":4,"cache_read_input_tokens":7629,"cache_creation_input_tokens":696},"content":[{"type":"text","text":"RESPONSE-CANARY-5"}]},"effort":"medium"}
 {"type":"system","uuid":"e0000023-0000-4000-8000-000000000000","parentUuid":"e0000022-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T06:40:50.977Z","isSidechain":false,"version":"2.1.318","entrypoint":"remote_mobile","gitBranch":"branch-1","subtype":"stop_hook_summary"}
-{"type":"last-prompt","sessionId":"00000000-0000-4000-8000-000000000001"}
+{"type":"last-prompt","leafUuid":"e0000023-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"cost-state","totalCostUSD":0.0026895950000000004,"totalDuration":10704,"totalAPIDuration":9624,"startTime":1793774440290,"modelUsage":{"model-a":{"inputTokens":1252,"outputTokens":743,"cacheReadInputTokens":17327,"cacheCreationInputTokens":11162,"costUSD":0.0026895950000000004}},"sessionId":"00000000-0000-4000-8000-000000000001"}

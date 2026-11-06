@@ -72,6 +72,14 @@ if ($lines.Count -ge 1 -and $lines[0] -match '"schema_version": "1.1"' -and $lin
 } else {
     Fail 'Event content unexpected'
 }
+# A1 D1.5: ts is the lifetime's latest entry, never the hook's clock (the deriver's own
+# numbers are compared event for event in tests/scripts/test-session-diagnostics.py).
+if ($lines.Count -ge 1 -and $lines[0].Contains('"ts": "2026-11-04T20:55:04.349Z"') `
+    -and $lines[0].Contains('"anchor": "cs:1793825684600:6908"')) {
+    Pass "ts is the resumed lifetime's latest entry and the anchor its closing cost-state"
+} else {
+    Fail 'ts or anchor unexpected'
+}
 if ($lines.Count -ge 1 -and $lines[0] -match 'CANARY') { Fail 'Transcript text leaked into the event' } else { Pass 'No prompt, response or tool text in the event' }
 
 # --- Test 2: a second firing on the same state appends nothing ---
@@ -82,7 +90,9 @@ if ((Get-FileHash -Path $Log -Algorithm SHA256).Hash -eq $before) { Pass 'Second
 # --- Test 3: raw UTF-8 bytes pass through (non-ASCII project path) ---
 $Proj3 = Join-Path $TempDir ([string]::Concat([char]0x6728, [char]0x4E0B, '-proj'))
 New-Project $Proj3
-Invoke-Hook $Hook (Get-Payload $Proj3) @{ CLAUDE_PID = '4102' } | Out-Null
+# A non-UTF-8 Python stdio encoding, as on a Windows console code page (parity with the
+# bash twin's PYTHONIOENCODING=latin-1): the wrapper's raw bytes must still decode.
+Invoke-Hook $Hook (Get-Payload $Proj3) @{ CLAUDE_PID = '4102'; PYTHONIOENCODING = 'cp1252' } | Out-Null
 $Log3 = Join-Path $Proj3 '.council/diagnostics.jsonl'
 $expectedProject = '"project": "' + (Split-Path $Proj3 -Leaf) + '"'
 if ((Test-Path $Log3) -and ((Get-Content $Log3 -Raw -Encoding utf8).Contains($expectedProject))) {

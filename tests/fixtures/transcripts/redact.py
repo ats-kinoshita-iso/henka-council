@@ -12,10 +12,16 @@ probe's main transcripts, subagent files and hook-time snapshots:
   keys alike); the literal '<synthetic>' is kept;
 - MCP tool names mcp__<server>__<tool> become mcp__srv1__tool1 style placeholders;
 - prompt, response, thinking and tool-result text become canary strings that the
-  tests assert never reach an event; tool inputs become {"canary": ...};
+  tests assert never reach an event, numbered by text so equal text gets the same
+  canary in every file of a probe (a hook-time snapshot stays a byte prefix of its
+  final file); tool inputs become {"canary": ...};
+- a last-prompt entry keeps its leafUuid and a compact boundary its
+  logicalParentUuid, through the uuid placeholders;
 - a user command echo keeps only '<command-name>/clear</command-name>' (the deriver
   recognises a /clear-opened session by it); other markup becomes '<redacted/>';
-- cwd, paths, URLs, titles, attachments, queued text and every other field are dropped.
+- cwd, paths, URLs, titles, attachments, queued text and every other field are dropped;
+- with ``keep_size`` each line also records its original byte length as ``_size`` (a
+  number only), so a test can pad the skeleton back to the real file's size.
 
 Used by the scratch build that produced tests/fixtures/transcripts/*; kept here so
 the rules can be audited and re-applied after a Claude Code format change.
@@ -24,7 +30,7 @@ Stdlib only.
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 Json = Dict[str, Any]
 CLEAR = "<command-name>/clear</command-name>"
@@ -37,10 +43,11 @@ KEEP_FLAGS = ("isSidechain", "isMeta", "isCompactSummary", "isApiErrorMessage", 
 class Redactor:
     """One instance per probe, so placeholders stay consistent across its files."""
 
-    def __init__(self) -> None:
+    def __init__(self, keep_size: bool = False) -> None:
         self.maps: Dict[str, Dict[str, str]] = {}
         self.counters: Dict[str, int] = {}
-        self.canaries = 0
+        self.canaries: Dict[Tuple[str, str], int] = {}
+        self.keep_size = keep_size
 
     def placeholder(self, kind: str, value: str) -> str:
         table = self.maps.setdefault(kind, {})
@@ -82,9 +89,11 @@ class Redactor:
             tools[key] = f"tool{len(tools) + 1}"
         return f"mcp__{servers[server]}__{tools[key]}"
 
-    def canary(self, kind: str) -> str:
-        self.canaries += 1
-        return f"{kind}-CANARY-{self.canaries}"
+    def canary(self, kind: str, text: str = "") -> str:
+        key = (kind, text)
+        if key not in self.canaries:
+            self.canaries[key] = len(self.canaries) + 1
+        return f"{kind}-CANARY-{self.canaries[key]}"
 
     # ------------------------------------------------------------------------------
 
@@ -95,6 +104,10 @@ class Redactor:
                 out[key] = self.placeholder(kind, value)
             elif key == "parentUuid" and key in entry:
                 out[key] = None
+        for key in ("logicalParentUuid", "leafUuid"):
+            value = entry.get(key)
+            if isinstance(value, str) and value:
+                out[key] = self.placeholder("uuid", value)
         session = entry.get("sessionId")
         if isinstance(session, str) and session:
             out["sessionId"] = self.placeholder("session", session)
@@ -109,7 +122,7 @@ class Redactor:
             return "Caveat: redacted"
         if stripped.startswith("[Request interrupted"):
             return "[Request interrupted]"
-        return self.canary("PROMPT")
+        return self.canary("PROMPT", text)
 
     def _blocks(self, blocks: List[Any], role: str) -> List[Json]:
         out: List[Json] = []
@@ -124,7 +137,7 @@ class Redactor:
                 item["input"] = {"canary": "TOOL-INPUT-CANARY"}
                 out.append(item)
             elif kind == "tool_result":
-                item = {"type": "tool_result", "content": self.canary("TOOL-OUTPUT")}
+                item = {"type": "tool_result", "content": self.canary("TOOL-OUTPUT", json.dumps(block.get("content"), sort_keys=True))}
                 if isinstance(block.get("tool_use_id"), str):
                     item["tool_use_id"] = self.placeholder("tool", block["tool_use_id"])
                 if isinstance(block.get("is_error"), bool):
@@ -132,9 +145,9 @@ class Redactor:
                 out.append(item)
             elif kind == "text":
                 text = str(block.get("text", ""))
-                out.append({"type": "text", "text": self._user_text(text) if role == "user" else self.canary("RESPONSE")})
+                out.append({"type": "text", "text": self._user_text(text) if role == "user" else self.canary("RESPONSE", text)})
             elif kind in ("thinking", "redacted_thinking"):
-                out.append({"type": "thinking", "thinking": self.canary("THINKING")})
+                out.append({"type": "thinking", "thinking": self.canary("THINKING", str(block.get("thinking") or block.get("data") or ""))})
             else:
                 out.append({"type": str(kind)})
         return out
@@ -215,8 +228,13 @@ class Redactor:
             return None
         if not isinstance(entry, dict):
             return None
-        return json.dumps(self.entry(entry), ensure_ascii=False, separators=(",", ":")).encode("utf-8") + b"\n"
+        out = self.entry(entry)
+        if self.keep_size:
+            out["_size"] = len(raw.rstrip(b"\n")) + 1
+        return json.dumps(out, ensure_ascii=False, separators=(",", ":")).encode("utf-8") + b"\n"
 
     def report(self) -> Json:
         """Counts of what was mapped (never the original values)."""
-        return {kind: len(table) for kind, table in sorted(self.maps.items())}
+        report: Json = {kind: len(table) for kind, table in sorted(self.maps.items())}
+        report["canary"] = len(self.canaries)
+        return report

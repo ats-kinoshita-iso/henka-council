@@ -17,7 +17,7 @@
 {"type":"api-request-blob","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"api-request-blob","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"api-request","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:54:45.529Z","version":"2.1.318"}
-{"type":"last-prompt","sessionId":"00000000-0000-4000-8000-000000000001"}
+{"type":"last-prompt","leafUuid":"e0000012-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"atis-latch","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"tools-used","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"assistant","uuid":"e0000013-0000-4000-8000-000000000000","parentUuid":"e0000012-0000-4000-8000-000000000000","requestId":"req_000001","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:54:47.234Z","isSidechain":false,"version":"2.1.318","entrypoint":"sdk-cli","gitBranch":"branch-1","message":{"model":"model-a","usage":{"input_tokens":2,"output_tokens":124,"cache_read_input_tokens":11382,"cache_creation_input_tokens":6677},"content":[{"type":"tool_use","name":"Agent","id":"toolu_000001","input":{"canary":"TOOL-INPUT-CANARY"}}]},"effort":"medium"}
@@ -27,7 +27,7 @@
 {"type":"attachment","uuid":"e0000017-0000-4000-8000-000000000000","parentUuid":"e0000016-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:54:47.303Z","isSidechain":false,"version":"2.1.318","entrypoint":"sdk-cli","gitBranch":"branch-1"}
 {"type":"api-request-blob","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"api-request","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:54:47.322Z","version":"2.1.318"}
-{"type":"last-prompt","sessionId":"00000000-0000-4000-8000-000000000001"}
+{"type":"last-prompt","leafUuid":"e0000017-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"atis-latch","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"queue-operation","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:54:48.422Z","operation":"enqueue"}
 {"type":"assistant","uuid":"e0000018-0000-4000-8000-000000000000","parentUuid":"e0000017-0000-4000-8000-000000000000","requestId":"req_000002","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:54:49.062Z","isSidechain":false,"version":"2.1.318","entrypoint":"sdk-cli","gitBranch":"branch-1","message":{"model":"model-a","usage":{"input_tokens":2,"output_tokens":28,"cache_read_input_tokens":18059,"cache_creation_input_tokens":612},"content":[{"type":"text","text":"RESPONSE-CANARY-3"}]},"effort":"medium"}
@@ -40,7 +40,7 @@
 {"type":"api-request","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:54:49.198Z","version":"2.1.318"}
 {"type":"assistant","uuid":"e0000022-0000-4000-8000-000000000000","parentUuid":"e0000021-0000-4000-8000-000000000000","requestId":"req_000003","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:54:50.159Z","isSidechain":false,"version":"2.1.318","entrypoint":"sdk-cli","gitBranch":"branch-1","message":{"model":"model-a","usage":{"input_tokens":2,"output_tokens":5,"cache_read_input_tokens":18671,"cache_creation_input_tokens":602},"content":[{"type":"text","text":"RESPONSE-CANARY-4"}]},"effort":"medium"}
 {"type":"system","uuid":"e0000023-0000-4000-8000-000000000000","parentUuid":"e0000022-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:54:50.216Z","isSidechain":false,"version":"2.1.318","entrypoint":"sdk-cli","gitBranch":"branch-1","subtype":"stop_hook_summary"}
-{"type":"last-prompt","sessionId":"00000000-0000-4000-8000-000000000001"}
+{"type":"last-prompt","leafUuid":"e0000023-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"cost-state","totalCostUSD":0.0034037449999999997,"totalDuration":5630,"totalAPIDuration":5470,"startTime":1793825684600,"modelUsage":{"model-a":{"inputTokens":8,"outputTokens":162,"cacheReadInputTokens":48112,"cacheCreationInputTokens":17992,"costUSD":0.0034037449999999997}},"sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"tools-used","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"queue-operation","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:55:03.117Z","operation":"enqueue"}
@@ -52,6 +52,6 @@
 {"type":"api-request","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:55:03.336Z","version":"2.1.318"}
 {"type":"assistant","uuid":"e0000027-0000-4000-8000-000000000000","parentUuid":"e0000026-0000-4000-8000-000000000000","requestId":"req_000004","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:55:04.295Z","isSidechain":false,"version":"2.1.318","entrypoint":"sdk-cli","gitBranch":"branch-1","message":{"model":"model-a","usage":{"input_tokens":2,"output_tokens":5,"cache_read_input_tokens":19243,"cache_creation_input_tokens":93},"content":[{"type":"text","text":"RESPONSE-CANARY-6"}]},"effort":"medium"}
 {"type":"system","uuid":"e0000028-0000-4000-8000-000000000000","parentUuid":"e0000027-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001","timestamp":"2026-11-04T20:55:04.349Z","isSidechain":false,"version":"2.1.318","entrypoint":"sdk-cli","gitBranch":"branch-1","subtype":"stop_hook_summary"}
-{"type":"last-prompt","sessionId":"00000000-0000-4000-8000-000000000001"}
+{"type":"last-prompt","leafUuid":"e0000028-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"mode","sessionId":"00000000-0000-4000-8000-000000000001"}
 {"type":"cost-state","totalCostUSD":0.0036174749999999998,"totalDuration":6908,"totalAPIDuration":6448,"startTime":1793825684600,"modelUsage":{"model-a":{"inputTokens":10,"outputTokens":167,"cacheReadInputTokens":67355,"cacheCreationInputTokens":18085,"costUSD":0.0036174749999999998}},"sessionId":"00000000-0000-4000-8000-000000000001"}

@@ -3,12 +3,14 @@
 #
 # Not run in CI: it starts real `claude -p` sessions and spends a little (each run is
 # capped with --max-budget-usd 0.05). It checks that the installed Claude Code still
-# gives a SessionEnd hook the budget the session diagnostics hook is built for: a
-# hook that sleeps FITS_S (1.0 s) finishes, a hook that sleeps OVERRUNS_S (2.5 s) is
-# cancelled. If either assertion fails the budget changed: revisit DEFAULT_BUDGET_S in
-# scripts/_diaglib.py (about 1.0 s of deriver work) before relying on the hook. The
-# deterministic half, the deriver's SessionEnd work on the heaviest recorded fixture,
-# is checked by tests/scripts/test-session-diagnostics.py.
+# gives a SessionEnd hook the budget the session diagnostics hook is built for. The
+# hook works for up to DEFAULT_BUDGET_S, then waits up to APPEND_GRACE_S for the ledger
+# lock (scripts/_diaglib.py), so a hook that sleeps FITS_S (those two plus 0.1 s,
+# about 1.4 s) must finish, and one that sleeps OVERRUNS_S (1.7 s, just above the
+# pinned version's 1.5 s budget) must be cancelled. If either assertion fails the
+# budget changed: revisit DEFAULT_BUDGET_S and APPEND_GRACE_S before relying on the
+# hook. The deterministic half, the hook's SessionEnd work on the heaviest recorded
+# fixture restored to its real size, is checked by tests/scripts/test-session-diagnostics.py.
 #
 # Usage: CANARY_MODEL=<cheapest model id> bash tests/live/test-sessionend-budget-canary.sh
 # Optional: CLAUDE_BIN (default claude), CANARY_DIR (default a fresh temp dir).
@@ -18,8 +20,9 @@ set -uo pipefail
 : "${CANARY_MODEL:?set CANARY_MODEL to the model id to run the probe sessions with}"
 CLAUDE_BIN="${CLAUDE_BIN:-claude}"
 PINNED_VERSION="2.1.318"
-FITS_S="1.0"
-OVERRUNS_S="2.5"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FITS_S="$(python3 -c "import sys; sys.path.insert(0, sys.argv[1]); import _diaglib as dl; print(round(dl.DEFAULT_BUDGET_S + dl.APPEND_GRACE_S + 0.1, 2))" "$HERE/../../scripts")"
+OVERRUNS_S="1.7"
 WORK="${CANARY_DIR:-$(mktemp -d)}"
 ERRORS=0
 pass() { echo "PASS: $1"; }

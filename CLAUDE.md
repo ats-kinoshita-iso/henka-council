@@ -60,11 +60,12 @@ may overwrite or delete them:
 - `.council/diagnostics.jsonl`
 
 Any write attempt to these files must go through the approved append scripts
-(`scripts/append-henka.py`, `scripts/append-decision.py`); only hooks write the
-audit and diagnostics logs (and the diagnostics backfill command).
+(`scripts/append-henka.py`, `scripts/append-decision.py`); the audit and
+diagnostics logs only by hooks, the diagnostics backfill and
+`measure-projection-cost.py --emit-event`.
 The `hooks/enforce-append-only.sh` hook enforces this at the `PreToolUse` level.
-The diagnostics log is one event per settled process lifetime (ADR-0006 A1,
-never prompt text): `instructions/controlled-artifacts.md`.
+Diagnostics: one event per settled process lifetime (ADR-0006 A1, never prompt
+text), `instructions/controlled-artifacts.md`.
 
 The following files are **sacred** and require Level 5 (human) approval before
 any modification:

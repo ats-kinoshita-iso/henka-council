@@ -3,16 +3,22 @@
 ``scripts/session_lifetimes.py`` derives events from files; this module decides
 where they go and what the hook adds that is not on disk:
 
-- the append protocol of ``.council/diagnostics.jsonl``: an exclusive lock file,
-  each event validated (``jsonschema`` when importable, otherwise structural checks
-  read from the same schema), an event_id already in the ledger or in its newest
-  rotated archive skipped, one LF-terminated UTF-8 line per event;
-- notes under ``.council/state/run/``, a directory that ignores itself in git: a
-  ``/clear`` note keyed by ``CLAUDE_PID`` (the old session's closing cost-state is
-  written only after its SessionEnd hook returns, so the successor's SessionEnd in
-  the same process settles it) and pending notes for work past the time budget;
-- the context a hook observes: sprint and phase from ``.harness/sprint-state.json``
-  and the commit at ``HEAD``; and a fork hint from the claude process command line.
+- the append protocol of ``.council/diagnostics.jsonl``: each event validated first
+  (``jsonschema`` when importable, otherwise structural checks read from the same
+  schema), then, under an exclusive lock file, an event_id already in the ledger or
+  in its newest rotated archive skipped and one LF-terminated UTF-8 line written per
+  event;
+- the state directory ``.council/state/run/``, which ignores itself in git:
+  ``clear-<pid>.json`` notes (the old session's closing cost-state is written only
+  after its SessionEnd hook returns, so the successor's SessionEnd in the same
+  process settles it), ``pending-*.json`` notes for work left to a later SessionEnd,
+  and ``spool-<event_id>.json`` files: a derived event waits there until it is in
+  the ledger, so an event whose append failed (lock held, time up) is appended by
+  the next SessionEnd of the project;
+- the context a hook observes: sprint and phase from ``.harness/sprint-state.json``,
+  the commit at ``HEAD``, a fork hint from the claude process command line, and the
+  claude process's identity (pid plus start time), so a note is never taken for
+  this process's own after the pid was reused.
 
 Stdlib only; Python 3.10. Never calls os.kill.
 """
@@ -29,20 +35,27 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Set
+from typing import Any, Dict, Iterator, List, Optional, Set, Tuple
 
 import session_lifetimes as sl
 from _hooklib import git_output, harness_context
 
 SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schemas" / "diagnostic-event.schema.json"
 LEDGER_NAME = "diagnostics.jsonl"
-DEFAULT_BUDGET_S = 1.0
-APPEND_GRACE_S = 0.3
-LOCK_STALE_S = 30.0
+LOCK_NAME = "diagnostics.lock"
+DEFAULT_BUDGET_S = 1.0  # deriver work per SessionEnd (DIAGNOSTICS_BUDGET_MS)
+APPEND_GRACE_S = 0.3  # extra wait for the ledger lock once the work is done
+# Writers hold the lock for milliseconds (validation happens before it is taken), so
+# an older lock was left by a killed writer.
+LOCK_STALE_S = 5.0
 NOTE_MAX_AGE_S = 30 * 86400.0
 CLEAR_NOTE_GRACE_S = 86400.0
+# A note whose transcript is larger is not retried by the hook (it would not settle
+# within the budget): the backfill command records that lifetime.
+MAX_NOTE_TRANSCRIPT_BYTES = 64 * 1024 * 1024
 PID_RE = re.compile(r"^[0-9]{1,10}$")
 UUID5_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
+SPOOL_PREFIX = "spool-"
 
 Json = Dict[str, Any]
 
@@ -82,6 +95,31 @@ def process_args(pid: Optional[str]) -> List[str]:
             return []
         return completed.stdout.split() if completed.returncode == 0 else []
     return []
+
+
+def process_start(pid: Optional[str]) -> Optional[str]:
+    """An identity for the process's start, so a reused pid is not taken for the same
+    process: the boot id and /proc/<pid>/stat start time on Linux, ``ps -o lstart=``
+    on macOS; None elsewhere or when unknown."""
+    if not pid or not PID_RE.match(pid):
+        return None
+    try:
+        stat = (Path("/proc") / pid / "stat").read_text(encoding="utf-8", errors="replace")
+        fields = stat[stat.rindex(")") + 2:].split()
+        boot = Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
+        return f"{boot}:{fields[19]}"
+    except (OSError, ValueError, IndexError):
+        pass
+    if sys.platform == "darwin":
+        try:
+            completed = subprocess.run(
+                ["ps", "-o", "lstart=", "-p", pid], capture_output=True, text=True, timeout=0.5, check=False
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        value = completed.stdout.strip()
+        return value if completed.returncode == 0 and value else None
+    return None
 
 
 def fork_hint(pid: Optional[str]) -> sl.Hints:
@@ -151,14 +189,21 @@ def known_event_ids(ledger: Path) -> Set[str]:
     return ids
 
 
+def lock_path(ledger: Path) -> Path:
+    return run_dir(ledger) / LOCK_NAME
+
+
 class LedgerLock:
-    """An exclusive lock file (O_CREAT|O_EXCL works on every platform)."""
+    """An exclusive lock file (O_CREAT|O_EXCL works on every platform). It records the
+    holder's pid and time; one older than LOCK_STALE_S was left by a killed writer and
+    is broken (by its mtime: no process is ever signalled)."""
 
     def __init__(self, path: Path, give_up_at: Optional[float]) -> None:
         self.path = path
         self.give_up_at = give_up_at
 
     def __enter__(self) -> "LedgerLock":
+        self.path.parent.mkdir(parents=True, exist_ok=True)
         while True:
             try:
                 handle = os.open(str(self.path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
@@ -169,37 +214,55 @@ class LedgerLock:
                         continue
                 except FileNotFoundError:
                     continue
+                except OSError:
+                    pass  # a lock that cannot be removed (Windows scanner): wait as for a live one
                 if self.give_up_at is not None and time.monotonic() > self.give_up_at:
                     raise sl.DeadlineExceeded() from None
                 time.sleep(0.02)
                 continue
             try:
-                os.write(handle, str(os.getpid()).encode("ascii"))
+                os.write(handle, f"{os.getpid()} {time.time():.3f}\n".encode("ascii"))
             finally:
                 os.close(handle)
             return self
 
     def __exit__(self, *_: object) -> None:
-        with contextlib.suppress(FileNotFoundError):
+        with contextlib.suppress(OSError):
             self.path.unlink()
 
 
-def append_events(ledger: Path, events: List[Json], give_up_at: Optional[float] = None) -> List[str]:
-    """Append the events whose event_id is new; returns the appended ids."""
-    if not events:
+def valid_events(events: List[Json]) -> List[Json]:
+    """The events that pass validation; each rejected one is logged by its id."""
+    out: List[Json] = []
+    for event in events:
+        event_id = event.get("event_id")
+        if not isinstance(event_id, str):
+            log("an event without an event_id was rejected, not written")
+            continue
+        problem = validate_event(event)
+        if problem:
+            log(f"event {event_id} rejected by the schema, not written: {problem}")
+            continue
+        out.append(event)
+    return out
+
+
+def append_events(
+    ledger: Path, events: List[Json], give_up_at: Optional[float] = None, *, validated: bool = False
+) -> List[str]:
+    """Append the valid events whose event_id is new; returns the appended ids.
+    Raises DeadlineExceeded when the lock is still held at ``give_up_at`` (nothing is
+    written then) and OSError when the ledger cannot be written."""
+    checked = events if validated else valid_events(events)
+    if not checked:
         return []
-    notes = ensure_run_dir(ledger)
-    with LedgerLock(notes / "diagnostics.lock", give_up_at):
+    with LedgerLock(lock_path(ensure_run_dir(ledger)), give_up_at):
         known = known_event_ids(ledger)
         lines: List[str] = []
         appended: List[str] = []
-        for event in events:
-            event_id = event.get("event_id")
-            if not isinstance(event_id, str) or event_id in known:
-                continue
-            problem = validate_event(event)
-            if problem:
-                log(f"event {event_id} rejected by the schema, not written: {problem}")
+        for event in checked:
+            event_id = event["event_id"]
+            if event_id in known:
                 continue
             known.add(event_id)
             appended.append(event_id)
@@ -217,7 +280,7 @@ def append_events(ledger: Path, events: List[Json], give_up_at: Optional[float] 
 
 
 # --------------------------------------------------------------------------------------
-# Notes in .council/state/run/
+# State in .council/state/run/: notes and the spool
 # --------------------------------------------------------------------------------------
 
 
@@ -228,20 +291,24 @@ def run_dir(ledger: Path) -> Path:
 def ensure_run_dir(ledger: Path) -> Path:
     """.council/state/run/, created on first use with a .gitignore that ignores the
     whole directory (itself included): the archivist reads .council/state, so only
-    this subdirectory may be ignored."""
+    this subdirectory may be ignored. Returns the ledger, for chaining."""
     path = run_dir(ledger)
     path.mkdir(parents=True, exist_ok=True)
     ignore = path / ".gitignore"
     if not ignore.exists():
         ignore.write_text("# local, per-machine state of the session diagnostics hook\n*\n", encoding="utf-8")
-    return path
+    return ledger
+
+
+def _write_json(path: Path, value: Json) -> None:
+    temporary = path.parent / f".{path.name}.{os.getpid()}.tmp"
+    temporary.write_text(json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(temporary, path)
 
 
 def write_note(ledger: Path, name: str, note: Json) -> None:
-    folder = ensure_run_dir(ledger)
-    temporary = folder / f".{name}.{os.getpid()}.tmp"
-    temporary.write_text(json.dumps(note, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
-    os.replace(temporary, folder / name)
+    ensure_run_dir(ledger)
+    _write_json(run_dir(ledger) / name, note)
 
 
 def read_note(path: Path) -> Optional[Json]:
@@ -258,10 +325,18 @@ def delete_note(path: Path) -> None:
 
 
 def list_notes(ledger: Path) -> List[Path]:
+    """Notes, oldest first (by the time they record), so none is starved."""
     folder = run_dir(ledger)
     if not folder.is_dir():
         return []
-    return sorted(p for p in folder.glob("*.json") if p.name.startswith(("clear-", "pending-")))
+    found = [p for p in folder.glob("*.json") if p.name.startswith(("clear-", "pending-"))]
+
+    def age(path: Path) -> Tuple[float, str]:
+        note = read_note(path) or {}
+        created = note.get("created_epoch")
+        return (float(created) if isinstance(created, (int, float)) else 0.0, path.name)
+
+    return sorted(found, key=age)
 
 
 def clear_note_name(pid: Optional[str], session_id: str) -> str:
@@ -269,8 +344,9 @@ def clear_note_name(pid: Optional[str], session_id: str) -> str:
     return f"clear-{key}.json"
 
 
-def pending_note_name(session_id: str, mode: str, offset: int) -> str:
-    digest = hashlib.sha1(f"{session_id}|{mode}|{offset}".encode("utf-8")).hexdigest()[:16]
+def pending_note_name(session_id: str, mode: str, key: Any) -> str:
+    """pending-<hash>.json over the session, the selection mode and its offset or uuid."""
+    digest = hashlib.sha1(f"{session_id}|{mode}|{key}".encode("utf-8")).hexdigest()[:16]
     return f"pending-{digest}.json"
 
 
@@ -279,15 +355,53 @@ def note_is_stale(note: Json) -> bool:
     return isinstance(created, (int, float)) and time.time() - float(created) > NOTE_MAX_AGE_S
 
 
-def note_is_orphaned(note: Json, pid: Optional[str]) -> bool:
-    """A /clear note another process may settle: its successor never ran a SessionEnd
-    within CLEAR_NOTE_GRACE_S (or the note carries no process id at all)."""
-    if note.get("pid") and note.get("pid") == pid:
+def same_process(note: Json, pid: Optional[str], start: Optional[str]) -> bool:
+    """The note was left by this claude process: same pid and, where the platform
+    tells, the same process start (a reused pid is another process)."""
+    if not pid or note.get("pid") != pid:
+        return False
+    if start is not None and note.get("pid_start") is not None:
+        return bool(note.get("pid_start") == start)
+    created = note.get("created_epoch")
+    return isinstance(created, (int, float)) and time.time() - float(created) <= CLEAR_NOTE_GRACE_S
+
+
+def note_is_orphaned(note: Json, pid: Optional[str], start: Optional[str]) -> bool:
+    """A /clear note another process may settle: its successor's process is not this
+    one and did not end within CLEAR_NOTE_GRACE_S (or the note carries no pid)."""
+    if same_process(note, pid, start):
         return False
     if not note.get("pid"):
         return True
     created = note.get("created_epoch")
-    return isinstance(created, (int, float)) and time.time() - float(created) > CLEAR_NOTE_GRACE_S
+    return not isinstance(created, (int, float)) or time.time() - float(created) > CLEAR_NOTE_GRACE_S
+
+
+def spool_path(ledger: Path, event_id: str) -> Path:
+    return run_dir(ledger) / f"{SPOOL_PREFIX}{event_id}.json"
+
+
+def write_spool(ledger: Path, event: Json) -> Path:
+    ensure_run_dir(ledger)
+    path = spool_path(ledger, str(event["event_id"]))
+    _write_json(path, event)
+    return path
+
+
+def read_spool(ledger: Path) -> List[Tuple[Path, Json]]:
+    """Events earlier firings derived but could not append, oldest file first."""
+    folder = run_dir(ledger)
+    if not folder.is_dir():
+        return []
+    out: List[Tuple[Path, Json]] = []
+    for path in sorted(folder.glob(f"{SPOOL_PREFIX}*.json"), key=lambda p: (p.stat().st_mtime, p.name)):
+        event = read_note(path)
+        if event is None or not isinstance(event.get("event_id"), str):
+            log(f"unreadable spool file {path.name} removed")
+            delete_note(path)
+            continue
+        out.append((path, event))
+    return out
 
 
 # --------------------------------------------------------------------------------------
@@ -346,6 +460,29 @@ def _usage_problem(name: str, usage: Any, definition: Json) -> Optional[str]:
                 return f"{name}.cost_usd is not a number >= 0"
         elif not _is_int(value):
             return f"{name}.{key} is not an integer >= 0"
+    return None
+
+
+def _days_problem(days: Any, definitions: Json, cost: Any) -> Optional[str]:
+    days_def = definitions["lifetime"]["properties"]["days"]
+    if not isinstance(days, dict) or len(days) < days_def.get("minProperties", 2):
+        return "lifetime.days needs two days or more"
+    allowed = set(days_def["additionalProperties"]["properties"])
+    for day, value in days.items():
+        if not re.match(days_def["propertyNames"]["pattern"], str(day)) or not isinstance(value, dict):
+            return f"lifetime.days.{day} malformed"
+        if any(key not in allowed for key in value) or "requests" not in value or "usage" not in value:
+            return f"lifetime.days.{day} keys"
+        if not _is_int(value["requests"]):
+            return f"lifetime.days.{day}.requests is not an integer >= 0"
+        problem = _usage_problem(f"lifetime.days.{day}.usage", value["usage"], definitions["usage"])
+        if problem:
+            return problem
+        day_cost = value.get("cost_usd")
+        if day_cost is not None and not _is_num(day_cost):
+            return f"lifetime.days.{day}.cost_usd is not a number >= 0"
+        if cost is None and day_cost is not None:
+            return "a null cost has null day costs"
     return None
 
 
@@ -453,6 +590,10 @@ def structural_problem(event: Json, schema: Optional[Json] = None) -> Optional[s
     cost = event.get("cost_usd")
     if cost is not None and not _is_num(cost):
         return "cost_usd is not a number >= 0"
+    if "days" in lifetime:
+        problem = _days_problem(lifetime["days"], definitions, cost)
+        if problem:
+            return problem
     if event["outcome"] == "interrupted":
         if cost is not None or not str(lifetime["anchor"]).startswith("open:") or lifetime["end_reason"] != "none":
             return "an interrupted lifetime has no cost, an open: anchor and end_reason none"

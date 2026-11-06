@@ -17,6 +17,31 @@ SessionEnd hook and the backfill command (``scripts/session-diagnostics.py``) on
 decide when to call it, which lifetimes to select and what context to attach, so
 every observer of a lifetime mints the same ``event_id`` and the same numbers.
 
+How a transcript splits into lifetimes (``_Segmenter``): each process appends a
+chain of entries linked by ``parentUuid`` and closes with a ``cost-state``. A
+process that resumes the session chains its first entry to the leaf it loaded.
+Two processes can write the same file at once, so the deriver tells them apart
+by structure, never by recency alone:
+
+- a cost-state belongs to the process named by the ``leafUuid`` of the latest
+  ``last-prompt`` entry since the previous cost-state (a process writes one as a
+  turn ends and as it exits) when that lifetime's tokens fit under the
+  cost-state's per-model delta; otherwise to the open lifetime whose tokens fit,
+  else to the latest activity; an equal-total cost-state that names a closed
+  lifetime, or follows one with no activity between, is a re-write;
+- a branch inside a lifetime is the same process when it is the next content
+  block of the same API response (parallel tool calls); a tool result that
+  carries the turn's ``promptId`` continues that turn, so a sibling branch with
+  another prompt (for example the ``interrupted`` repair a concurrent resume
+  writes) is another process; different ``entrypoint`` values separate two
+  processes at a turn boundary; a cost-state whose lineage started after the
+  lifetime's first entry closes only the part its process wrote; a second
+  cost-state that names a closed lifetime splits it at the branch point;
+- entries a process writes after its own cost-state (SIGTERM during a tool call:
+  the cancelled tool result and its attachments) stay in that lifetime;
+- the base a process restored is the last cost-state of the closing lineage
+  written before its resume point gained its first child.
+
 Stage 1 (SessionEnd only) behaviour, as A1's Verification states it:
 
 - an open lifetime (no closing ``cost-state`` yet) is never recorded;
@@ -58,12 +83,21 @@ SYNTHETIC_MODEL = "<synthetic>"
 SUBAGENT_TOOLS = frozenset({"Agent", "Task"})
 TURN_ORIGINS = frozenset({"human", "sdk"})
 DENIAL_DECISIONS = frozenset({"reject", "rejected", "deny", "denied", "blocked"})
+# toolDenialKind values Claude Code 2.1.318 writes for a denied tool call. It also
+# writes "interrupted" on the result of a call cut off by an exit, a kill, a turn
+# abort or a concurrent resume's repair: that is neither a denial nor a failure.
+DENIAL_KINDS = frozenset({"user-rejected", "permission-rule"})
+DENIAL_KIND_PREFIXES: Tuple[str, ...] = ("automode-",)
+INTERRUPTED_KIND = "interrupted"
 EFFORT_LEVELS = frozenset({"low", "medium", "high", "xhigh", "max"})
 CLEAR_COMMAND = "<command-name>/clear</command-name>"
 # A first lifetime whose own entries run past startTime + totalDuration restored
 # cost from before its file existed: a fork (probes: forks +1.8 s to +48 s, every
 # other first lifetime -4 ms or less).
 RESTORED_SLACK_MS = 1000
+# A lifetime's entries may carry timestamps slightly before its lineage's startTime
+# (a /clear session's first entry: 149 ms before).
+LINEAGE_SLACK_MS = 1000
 # Subagent files whose first or last entry is this far outside a window are skipped
 # without parsing them; entries are still filtered one by one.
 SUBAGENT_RANGE_SLACK_S = 3600.0
@@ -112,6 +146,10 @@ def parse_ts(value: Any) -> Optional[float]:
         digits = tz[1:].replace(":", "")
         seconds -= sign * (int(digits[:2]) * 3600 + int(digits[2:]) * 60)
     return seconds
+
+
+def utc_date(seconds: float) -> str:
+    return time.strftime("%Y-%m-%d", time.gmtime(seconds))
 
 
 def int_value(value: Any) -> Optional[int]:
@@ -223,19 +261,58 @@ def _dict(value: Any) -> Json:
     return value if isinstance(value, dict) else {}
 
 
+def _content_blocks(entry: Json) -> List[Json]:
+    message = entry.get("message")
+    content = message.get("content") if isinstance(message, dict) else None
+    return [block for block in content if isinstance(block, dict)] if isinstance(content, list) else []
+
+
+def _has_tool_result(entry: Json) -> bool:
+    return entry.get("type") == "user" and any(b.get("type") == "tool_result" for b in _content_blocks(entry))
+
+
+def _is_turn(entry: Json) -> bool:
+    """A human or SDK prompt; never a tool result, notification, command echo,
+    meta entry or compaction summary."""
+    if entry.get("type") != "user":
+        return False
+    if entry.get("isMeta") is True or entry.get("isCompactSummary") is True:
+        return False
+    if any(block.get("type") == "tool_result" for block in _content_blocks(entry)):
+        return False
+    origin = entry.get("turnOrigin")
+    if isinstance(origin, str):
+        return origin in TURN_ORIGINS
+    source = entry.get("origin")
+    if isinstance(source, dict) and isinstance(source.get("kind"), str):
+        return bool(source.get("kind") == "human")
+    prompt_source = entry.get("promptSource")
+    if isinstance(prompt_source, str):
+        return prompt_source in ("typed", "sdk")
+    message = entry.get("message")
+    content = message.get("content") if isinstance(message, dict) else None
+    if isinstance(content, list):
+        content = " ".join(
+            str(block.get("text", "")) for block in _content_blocks(entry) if block.get("type") == "text"
+        )
+    text = content.lstrip() if isinstance(content, str) else ""
+    return bool(text) and not text.startswith(("<", "Caveat:", "[Request interrupted"))
+
+
 # --------------------------------------------------------------------------------------
-# Lifetimes inside one transcript (parentUuid regions)
+# Lifetimes inside one transcript
 # --------------------------------------------------------------------------------------
 
 
-@dataclass
+@dataclass(eq=False)
 class Region:
-    """One process lifetime's share of a transcript."""
+    """One process lifetime's share of a transcript. Compared by identity."""
 
-    index: int
-    base: Optional[int]  # row index of the cost-state restored at start; None: nothing
-    rows: List[int] = field(default_factory=list)  # activity rows (chain and loose)
+    index: int = -1  # position among the transcript's lifetimes, in closing order
+    rows: List[int] = field(default_factory=list)  # own activity rows (chain and loose)
     closing: List[int] = field(default_factory=list)  # closing point first, then re-writes
+    leaf: Optional[str] = None  # the last-prompt leafUuid that named the closing cost-state
+    trailing: Set[int] = field(default_factory=set)  # rows written after the closing cost-state
     last_activity: int = -1
 
     @property
@@ -243,7 +320,7 @@ class Region:
         return bool(self.closing)
 
 
-def _cost_totals(entry: Json) -> Tuple[Optional[float], Tuple[Tuple[str, Tuple[Optional[int], ...]], ...]]:
+def _cost_totals(entry: Json) -> Tuple[Any, ...]:
     model_usage = entry.get("modelUsage")
     per_model: List[Tuple[str, Tuple[Optional[int], ...]]] = []
     if isinstance(model_usage, dict):
@@ -251,96 +328,453 @@ def _cost_totals(entry: Json) -> Tuple[Optional[float], Tuple[Tuple[str, Tuple[O
             usage = model_usage[model]
             if isinstance(usage, dict):
                 per_model.append((model, tuple(int_value(usage.get(k)) for k in MODEL_USAGE_KEYS)))
-    return num_value(entry.get("totalCostUSD")), tuple(per_model)
+    return int_value(entry.get("startTime")), num_value(entry.get("totalCostUSD")), tuple(per_model)
+
+
+JOIN = "join"
+SPLIT = "split"
+NEW = "new"
+
+
+class _Segmenter:
+    """Splits one transcript's rows into process lifetimes (see the module docstring)."""
+
+    def __init__(self, rows: Sequence[Row]) -> None:
+        self.rows = rows
+        self.cost_rows = [i for i, row in enumerate(rows) if row.kind == COST]
+        self.regions: List[Region] = []
+        self.region_of: Dict[int, Region] = {}
+        self.owner: Dict[str, Region] = {}
+        self.row_of: Dict[str, int] = {}
+        self.parent_of: Dict[str, Optional[str]] = {}
+        self.children: Dict[str, List[int]] = {}
+        self.prompt_of: Dict[str, Optional[str]] = {}
+        self.entrypoint_of: Dict[str, Optional[str]] = {}
+        self.pending: List[int] = []
+        self.latest: Optional[Region] = None
+        self.last_cs: Optional[int] = None
+        self.last_closed: Optional[Region] = None
+        self.leaf: Optional[str] = None  # leafUuid of the latest last-prompt since the last cost-state
+
+    # driver -----------------------------------------------------------------------
+
+    def run(self) -> List[Region]:
+        for i, row in enumerate(self.rows):
+            if row.kind == COST:
+                self._cost(i)
+            elif row.kind == LOOSE:
+                self._loose(i)
+            elif row.kind == CHAIN:
+                self._chain(i)
+            elif row.entry.get("type") == "last-prompt":
+                leaf = row.entry.get("leafUuid")
+                if isinstance(leaf, str) and leaf:
+                    self.leaf = leaf
+        regions = [r for r in self.regions if r.rows or r.closing]
+        regions.sort(key=lambda r: r.closing[0] if r.closing else min(r.rows, default=len(self.rows)))
+        for number, region in enumerate(regions):
+            region.index = number
+            region.rows.sort()
+        self.regions = regions
+        return regions
+
+    # placement --------------------------------------------------------------------
+
+    def _open(self) -> Region:
+        region = Region()
+        self.regions.append(region)
+        return region
+
+    def _add(self, region: Region, i: int) -> None:
+        region.rows.append(i)
+        self.region_of[i] = region
+        region.last_activity = max(region.last_activity, i)
+
+    def _loose(self, i: int) -> None:
+        if self.latest is not None and not self.latest.settled:
+            self._add(self.latest, i)
+        else:
+            self.pending.append(i)
+            self.latest = None
+
+    def _chain(self, i: int) -> None:
+        entry = self.rows[i].entry
+        uid = entry["uuid"]
+        if uid in self.row_of:  # a repeated uuid stays with its first entry's lifetime
+            region = self.owner.get(uid)
+            if region is not None:
+                self._add(region, i)
+            return
+        parent_raw = entry.get("parentUuid")
+        parent = parent_raw if isinstance(parent_raw, str) and parent_raw else None
+        logical_raw = entry.get("logicalParentUuid")
+        logical = logical_raw if parent is None and isinstance(logical_raw, str) and logical_raw else None
+        before = parent or logical
+        self.row_of[uid] = i
+        self.parent_of[uid] = parent
+        prompt = entry.get("promptId") if entry.get("type") == "user" else None
+        self.prompt_of[uid] = prompt if isinstance(prompt, str) and prompt else self.prompt_of.get(before or "")
+        entrypoint = entry.get("entrypoint")
+        self.entrypoint_of[uid] = (
+            entrypoint if isinstance(entrypoint, str) and entrypoint else self.entrypoint_of.get(before or "")
+        )
+        if parent is not None:
+            self.children.setdefault(parent, []).append(i)
+        region, trailing = self._place(i, parent, logical)
+        if self.pending and not trailing:
+            for j in self.pending:
+                self._add(region, j)
+            self.pending = []
+        self._add(region, i)
+        if trailing:
+            region.trailing.add(i)
+        self.owner[uid] = region
+        self.latest = region
+
+    def _place(self, i: int, parent: Optional[str], logical: Optional[str]) -> Tuple[Region, bool]:
+        if parent is not None and parent in self.owner:
+            region = self.owner[parent]
+            earlier = [c for c in self.children[parent][:-1] if self.region_of.get(c) is region]
+            if not region.settled:
+                if not earlier:
+                    return region, False
+                decision, others = self._branch(i, parent, earlier, region)
+                if decision == SPLIT:
+                    self._split_branch(region, parent, others, i, closed=False)
+                    return region, False
+                return (region if decision == JOIN else self._open()), False
+            decision, others = self._branch(i, parent, earlier, region) if earlier else (JOIN, [])
+            if decision == SPLIT:
+                if self._split_branch(region, parent, others, i, closed=True) is not None:
+                    return region, False  # the closing went with the other process: reopened
+                decision = JOIN
+            if decision == JOIN and self._trailing(i, parent, region):
+                return region, True
+            return self._open(), False
+        # a parentless entry (a root, a compact boundary) or one whose parent is not here
+        if logical is not None and logical in self.owner and not self.owner[logical].settled:
+            return self.owner[logical], False
+        if self.latest is not None and not self.latest.settled:
+            return self.latest, False
+        return self._open(), False
+
+    def _same_request(self, j: int, parent: str) -> bool:
+        request = self.rows[self.row_of[parent]].entry.get("requestId")
+        entry = self.rows[j].entry
+        return bool(isinstance(request, str) and request and entry.get("type") == "assistant"
+                    and entry.get("requestId") == request)
+
+    def _continues(self, j: int, parent: str) -> bool:
+        """A real tool result of the turn in progress at ``parent``."""
+        turn = self.prompt_of.get(parent)
+        entry = self.rows[j].entry
+        return bool(turn is not None and _has_tool_result(entry) and entry.get("promptId") == turn
+                    and entry.get("toolDenialKind") != INTERRUPTED_KIND)
+
+    def _branch(self, i: int, parent: str, earlier: List[int], region: Region) -> Tuple[str, List[int]]:
+        """Entry ``i`` is a second child of ``parent`` inside ``region``: the same process
+        (JOIN), the parent's process continuing while the earlier branch is another
+        process (SPLIT), or another process (NEW)."""
+        if self._same_request(i, parent):
+            return JOIN, []
+        others = [c for c in earlier if not self._same_request(c, parent)]
+        if not others:
+            return JOIN, []  # the next tool_use block of the same response: parallel tool calls
+        mine = self._continues(i, parent)
+        theirs = any(self._continues(c, parent) for c in others)
+        if mine and not theirs:
+            return SPLIT, others
+        if theirs and not mine:
+            return NEW, []
+        if not mine:
+            trunk = self.entrypoint_of.get(parent)
+            own = self.rows[i].entry.get("entrypoint")
+            other = self.rows[others[0]].entry.get("entrypoint")
+            if isinstance(trunk, str) and isinstance(own, str) and isinstance(other, str):
+                if own == trunk != other:
+                    return SPLIT, others
+                if other == trunk != own:
+                    return NEW, []
+        # No evidence: inside an open lifetime a rewind; after its close a later process.
+        return (JOIN if not region.settled else NEW), []
+
+    def _trailing(self, i: int, parent: str, region: Region) -> bool:
+        """An entry the closed lifetime's own process wrote after its cost-state: the
+        result of a tool call SIGTERM cancelled, then that result's attachments."""
+        if self._continues(i, parent):
+            return True
+        entry_type = self.rows[i].entry.get("type")
+        return self.row_of[parent] in region.trailing and not self.pending and entry_type in ("attachment", "system")
+
+    # splitting --------------------------------------------------------------------
+
+    def _subtree(self, roots: Iterable[int], region: Region) -> Set[int]:
+        found: Set[int] = set()
+        stack = [r for r in roots if self.region_of.get(r) is region]
+        while stack:
+            row = stack.pop()
+            if row in found:
+                continue
+            found.add(row)
+            uid = self.rows[row].entry.get("uuid")
+            for child in self.children.get(uid, []) if isinstance(uid, str) else []:
+                if self.region_of.get(child) is region and child not in found:
+                    stack.append(child)
+        return found
+
+    def _loose_with(self, region: Region, chain: Set[int]) -> Set[int]:
+        """The region's loose rows whose next chain row is in ``chain``: a process writes
+        its queue-operation and api-request entries just before its own entries."""
+        ordered = sorted(region.rows)
+        out: Set[int] = set()
+        waiting: List[int] = []
+        for row in ordered:
+            if self.rows[row].kind == LOOSE:
+                waiting.append(row)
+            elif self.rows[row].kind == CHAIN:
+                if row in chain:
+                    out.update(waiting)
+                waiting = []
+        return out
+
+    def _move(self, region: Region, moved: Set[int]) -> Region:
+        new = self._open()
+        for row in sorted(moved):
+            self.region_of[row] = new
+            new.rows.append(row)
+            uid = self.rows[row].entry.get("uuid")
+            if isinstance(uid, str) and self.owner.get(uid) is region:
+                self.owner[uid] = new
+            if row in region.trailing:
+                region.trailing.discard(row)
+                new.trailing.add(row)
+        region.rows = [row for row in region.rows if row not in moved]
+        region.last_activity = max(region.rows, default=-1)
+        new.last_activity = max(new.rows, default=-1)
+        return new
+
+    def _close_tip(self, region: Region) -> Optional[int]:
+        limit = region.closing[0] if region.closing else len(self.rows)
+        chain = [r for r in region.rows if self.rows[r].kind == CHAIN and r < limit]
+        return max(chain) if chain else None
+
+    def _closer_row(self, region: Region) -> Optional[int]:
+        """The chain row that names the process that wrote the region's closing."""
+        if region.leaf is not None and region.leaf in self.row_of:
+            return self.row_of[region.leaf]
+        return self._close_tip(region)
+
+    def _split_branch(
+        self, region: Region, parent: str, others: List[int], i: int, *, closed: bool
+    ) -> Optional[Region]:
+        """Move the branches ``others`` under ``parent`` out of ``region``: another
+        process wrote them. A closed region's closing goes with them, and the region
+        reopens, when they hold the entry that named it; otherwise nothing moves."""
+        chain = self._subtree(others, region)
+        if closed and self._closer_row(region) not in chain:
+            return None
+        moved = chain | self._loose_with(region, chain)
+        moved = {row for row in moved if row < i}
+        new = self._move(region, moved)
+        if closed:
+            new.closing, new.leaf = region.closing, region.leaf
+            region.closing, region.leaf = [], None
+            if self.last_closed is region:
+                self.last_closed = new
+        return new
+
+    # cost-states ------------------------------------------------------------------
+
+    def _same_totals(self, a: int, b: int) -> bool:
+        return _cost_totals(self.rows[a].entry) == _cost_totals(self.rows[b].entry)
+
+    def _cost(self, i: int) -> None:
+        leaf, self.leaf = self.leaf, None
+        named = self.owner.get(leaf) if leaf else None
+        target: Optional[Region] = None
+        if named is not None and named.settled:
+            if self._same_totals(named.closing[0], i):
+                named.closing.append(i)  # a re-write by the process that closed it
+                self.last_cs = i
+                return
+            target = self._split_closed(named, leaf or "", i)
+            named = None
+        if target is None and named is not None:
+            target = named
+            if not self._fits(named.rows, i):
+                fitting = [r for r in self._open_regions() if r is not named and self._fits(r.rows, i)]
+                if fitting:
+                    target = max(fitting, key=lambda r: r.last_activity)
+        if target is None:
+            since = self.last_cs if self.last_cs is not None else -1
+            open_regions = self._open_regions()
+            active = [r for r in open_regions if r.last_activity > since]
+            if (
+                not active
+                and not self.pending
+                and self.last_closed is not None
+                and self.last_cs is not None
+                and self._same_totals(self.last_cs, i)
+            ):
+                self.last_closed.closing.append(i)
+                self.last_cs = i
+                return
+            if self.pending and not active:
+                target = self._open()
+                for j in self.pending:
+                    self._add(target, j)
+                self.pending = []
+                self.latest = None
+            else:
+                pool = active or open_regions
+                fitting = [r for r in pool if self._fits(r.rows, i)]
+                choice = fitting or pool
+                target = max(choice, key=lambda r: r.last_activity) if choice else self._open()
+        if not target.settled and target.rows:
+            target = self._lineage_split(target, leaf, i) or target
+        target.closing.append(i)
+        target.leaf = leaf if leaf is not None and self.owner.get(leaf) is target else None
+        self.last_closed = target
+        self.last_cs = i
+
+    def _open_regions(self) -> List[Region]:
+        return [r for r in self.regions if not r.settled and r.rows]
+
+    def _lineage_split(self, region: Region, leaf: Optional[str], cs_row: int) -> Optional[Region]:
+        """A cost-state whose lineage started after the region's first entry cannot
+        close all of it: its process resumed from a leaf of another, still running,
+        process and restored nothing. Its own part starts at the first prompt it
+        wrote; a part that starts with a repair is left merged (a killed process)."""
+        start = int_value(self.rows[cs_row].entry.get("startTime"))
+        dated = stamps(self.rows, [r for r in region.rows if self.rows[r].kind == CHAIN])
+        if start is None or not dated or start <= min(dated) * 1000.0 + LINEAGE_SLACK_MS:
+            return None
+        threshold = (start - LINEAGE_SLACK_MS) / 1000.0
+        node: Optional[int] = self.row_of.get(leaf) if leaf and self.owner.get(leaf) is region else self._close_tip(region)
+        top: Optional[int] = None
+        while node is not None and self.region_of.get(node) is region:
+            ts = self.rows[node].ts
+            if ts is not None and ts < threshold:
+                break
+            top = node
+            parent = self.parent_of.get(self.rows[node].entry["uuid"])
+            node = self.row_of.get(parent) if parent else None
+        if top is None or node is None or self.region_of.get(node) is not region:
+            return None
+        if not _is_turn(self.rows[top].entry):
+            return None
+        chain = self._subtree([top], region)
+        return self._move(region, chain | self._loose_with(region, chain))
+
+    def _split_closed(self, region: Region, leaf: str, cs_row: int) -> Optional[Region]:
+        """A cost-state that names a closed region with other totals: two processes'
+        entries were merged there. Split at the branch point between the two named
+        leaves; the trunk stays with the side whose tokens fit its cost-state."""
+        closer = self._closer_row(region)
+        if closer is None or leaf not in self.row_of:
+            return None
+        closer_uuid = self.rows[closer].entry["uuid"]
+        path: List[str] = []
+        node: Optional[str] = closer_uuid
+        while node is not None and self.owner.get(node) is region:
+            path.append(node)
+            node = self.parent_of.get(node)
+        ancestors = set(path)
+        child: Optional[str] = None
+        node = leaf
+        while node is not None and self.owner.get(node) is region and node not in ancestors:
+            child = node
+            node = self.parent_of.get(node)
+        if node is None or node not in ancestors or child is None or node == closer_uuid:
+            return None  # a stale leaf: an ancestor or a later entry of the closing's own branch
+        branch_point = node
+        if self._same_request(self.row_of[child], branch_point):
+            return None
+        theirs = path[path.index(branch_point) - 1] if path.index(branch_point) > 0 else None
+        mine_chain = self._subtree([self.row_of[child]], region)
+        new = self._move(region, mine_chain | self._loose_with(region, mine_chain))
+        if theirs is not None and not self._fits(region.rows, region.closing[0]):
+            their_chain = self._subtree([self.row_of[theirs]], region)
+            their_rows = their_chain | self._loose_with(region, their_chain)
+            trunk = [r for r in region.rows if r not in their_rows]
+            if self._fits(sorted(their_rows), region.closing[0]) and self._fits(sorted(set(new.rows) | set(trunk)), cs_row):
+                for row in trunk:
+                    self.region_of[row] = new
+                    new.rows.append(row)
+                    uid = self.rows[row].entry.get("uuid")
+                    if isinstance(uid, str) and self.owner.get(uid) is region:
+                        self.owner[uid] = new
+                region.rows = sorted(their_rows)
+                region.last_activity = max(region.rows, default=-1)
+                new.last_activity = max(new.rows, default=-1)
+        return new
+
+    # bases and token fit ------------------------------------------------------------
+
+    def base_row(self, region_rows: Sequence[int], lineage: Optional[int], limit: int) -> Optional[int]:
+        """The cost-state a process restored: the last one of the closing lineage
+        written before its first row and before its resume point gained a child."""
+        bound = min(region_rows) if region_rows else limit
+        chain = [r for r in region_rows if self.rows[r].kind == CHAIN]
+        if chain:
+            parent = self.parent_of.get(self.rows[min(chain)].entry["uuid"])
+            if parent is not None and self.children.get(parent):
+                bound = min(bound, min(self.children[parent]))
+        bound = min(bound, limit)
+        best: Optional[int] = None
+        for row in self.cost_rows:
+            if row >= bound:
+                break
+            if int_value(self.rows[row].entry.get("startTime")) == lineage:
+                best = row
+        return best
+
+    def _main_usage(self, region_rows: Iterable[int]) -> Dict[str, Usage]:
+        requests: Dict[str, Usage] = {}
+        model_of: Dict[str, str] = {}
+        for row in region_rows:
+            entry = self.rows[row].entry
+            if entry.get("type") != "assistant":
+                continue
+            message = _dict(entry.get("message"))
+            model = message.get("model")
+            request_id = entry.get("requestId")
+            usage = message.get("usage")
+            if model == SYNTHETIC_MODEL or not isinstance(request_id, str) or not isinstance(usage, dict):
+                continue
+            current = requests.setdefault(request_id, zero_usage())
+            for key in USAGE_KEYS:
+                value = int_value(usage.get(key))
+                if value is not None and value > current[key]:
+                    current[key] = value
+            if isinstance(model, str) and model:
+                model_of[request_id] = model
+        out: Dict[str, Usage] = {}
+        for request_id, usage in requests.items():
+            add_usage(out.setdefault(model_of.get(request_id, "unknown"), zero_usage()), usage)
+        return out
+
+    def _fits(self, region_rows: Sequence[int], cs_row: int) -> bool:
+        """The region's main-transcript tokens fit under the cost-state's per-model
+        delta from the base its process restored."""
+        usage = self._main_usage(region_rows)
+        if not usage:
+            return True
+        end = self.rows[cs_row].entry
+        base_row = self.base_row(region_rows, int_value(end.get("startTime")), cs_row)
+        base = self.rows[base_row].entry if base_row is not None else {}
+        end_usage, base_usage = _dict(end.get("modelUsage")), _dict(base.get("modelUsage"))
+        for model, counts in usage.items():
+            high, low = _dict(end_usage.get(model)), _dict(base_usage.get(model))
+            for camel, snake in MODEL_USAGE_KEYS.items():
+                if counts[snake] > (int_value(high.get(camel)) or 0) - (int_value(low.get(camel)) or 0):
+                    return False
+        return True
 
 
 def segment(rows: Sequence[Row]) -> List[Region]:
-    """Split a transcript into lifetimes.
-
-    - A chain entry joins the open lifetime that owns its parent. A parent in a
-      closed lifetime means a process resumed after that lifetime ended: a new
-      lifetime opens. A parentless entry (a root, a compact boundary) joins the
-      open lifetime restored from the same cost-state, else opens one.
-    - A loose entry joins the lifetime of the latest activity when that lifetime is
-      open; otherwise it waits for the next lifetime (a process's queue-operation
-      precedes its first chain entry).
-    - A cost-state closes the open lifetime that wrote the latest activity. With no
-      activity since the previous cost-state it is a re-write when its totals equal
-      the previous one's, else it closes a lifetime of its own (spend without
-      entries). Pending loose entries before a cost-state form a lifetime of their own.
-    - A lifetime killed before writing its cost-state stays open, and the resume that
-      chains to it closes it (Stage 1: its tokens show as shortfall).
-    """
-    regions: List[Region] = []
-    owner: Dict[str, int] = {}
-    pending: List[int] = []
-    latest: Optional[int] = None  # region of the latest activity; None while pending
-    last_cs: Optional[int] = None
-    last_closed: Optional[int] = None
-
-    def open_region() -> Region:
-        region = Region(index=len(regions), base=last_cs)
-        regions.append(region)
-        return region
-
-    for i, row in enumerate(rows):
-        if row.kind == COST:
-            target: Optional[Region] = None
-            if pending:
-                target = open_region()
-                target.rows.extend(pending)
-                target.last_activity = pending[-1]
-                pending = []
-            elif latest is not None:
-                candidate = regions[latest]
-                since = last_cs if last_cs is not None else -1
-                if not candidate.closing and candidate.last_activity > since:
-                    target = candidate
-            if target is not None:
-                target.closing.append(i)
-                last_closed = target.index
-            elif (
-                last_closed is not None
-                and last_cs is not None
-                and _cost_totals(rows[last_cs].entry) == _cost_totals(row.entry)
-            ):
-                regions[last_closed].closing.append(i)
-            else:
-                target = open_region()
-                target.closing.append(i)
-                last_closed = target.index
-            last_cs = i
-        elif row.kind == LOOSE:
-            if latest is not None and not regions[latest].closing:
-                regions[latest].rows.append(i)
-                regions[latest].last_activity = i
-            else:
-                pending.append(i)
-                latest = None
-        elif row.kind == CHAIN:
-            parent = row.entry.get("parentUuid")
-            joined: Optional[Region] = None
-            if isinstance(parent, str) and parent in owner:
-                parent_region = regions[owner[parent]]
-                if not parent_region.closing:
-                    joined = parent_region
-            else:
-                for region in reversed(regions):
-                    if not region.closing and region.base == last_cs:
-                        joined = region
-                        break
-            if joined is None:
-                joined = open_region()
-            if pending:
-                joined.rows.extend(pending)
-                pending = []
-            joined.rows.append(i)
-            joined.last_activity = i
-            owner[row.entry["uuid"]] = joined.index
-            latest = joined.index
-    for region in regions:
-        region.rows.sort()
-    return regions
+    """The transcript's lifetimes, in closing order (open ones by their first row)."""
+    return _Segmenter(rows).run()
 
 
 def _concurrent(region: Region, regions: Sequence[Region]) -> bool:
@@ -348,7 +782,7 @@ def _concurrent(region: Region, regions: Sequence[Region]) -> bool:
         return False
     first, last = region.rows[0], region.rows[-1]
     for other in regions:
-        if other.index == region.index:
+        if other is region:
             continue
         if any(first < i < last for i in other.rows):
             return True
@@ -502,6 +936,33 @@ def _queue_marker_copies(rows: Sequence[Row], region: Region) -> List[int]:
     return copies
 
 
+def _gap_copies(rows: Sequence[Row], region: Region, closing: Json) -> List[int]:
+    """Without the parent and without a queue-operation marker (an interactive fork),
+    the copies are the chain entries before the fork point, found by time. Copies
+    keep the parent's timestamps, and the time between the parent's exit and the
+    fork's start is in no totalDuration, so the fork point is a gap between two
+    chain entries of at least (last entry - startTime) - totalDuration; the largest
+    such gap is taken. [] when no gap qualifies."""
+    start, duration = int_value(closing.get("startTime")), int_value(closing.get("totalDuration"))
+    chain = [i for i in region.rows if rows[i].kind == CHAIN and rows[i].ts is not None]
+    dated = stamps(rows, region.rows)
+    if start is None or duration is None or len(chain) < 2 or not dated:
+        return []
+    needed = max(dated) * 1000.0 - start - duration
+    best: Optional[Tuple[float, int]] = None
+    for position in range(1, len(chain)):
+        before, after = rows[chain[position - 1]].ts, rows[chain[position]].ts
+        if before is None or after is None:
+            continue
+        gap = (after - before) * 1000.0
+        if gap >= needed and (best is None or gap > best[0]):
+            best = (gap, position)
+    if best is None:
+        return []
+    cut = chain[best[1]]
+    return [i for i in region.rows if rows[i].kind == CHAIN and i < cut]
+
+
 def _restored(rows: Sequence[Row], region: Region, closing: Json) -> bool:
     start, duration = int_value(closing.get("startTime")), int_value(closing.get("totalDuration"))
     dated = stamps(rows, region.rows)
@@ -527,6 +988,8 @@ def detect_fork(
     and the same project directory first, then in the other project directories.
     Among parents that fit, the longest copied prefix wins, then the lowest restored
     cost (a sibling fork restores more than the true parent), then the smallest id.
+    Without a parent the copies are found by the queue-operation marker of a -p
+    fork, else by the time gap at the fork point.
     """
     if not region.settled:
         return None
@@ -550,18 +1013,13 @@ def detect_fork(
                     found.append(((-len(info.copies), restored, candidate.stem), info))
             if found:
                 return min(found, key=lambda item: item[0])[1]
-    return ForkInfo(_queue_marker_copies(rows, region), None, None)
+    copies = _queue_marker_copies(rows, region) or _gap_copies(rows, region, closing)
+    return ForkInfo(copies, None, None)
 
 
 # --------------------------------------------------------------------------------------
 # Measuring one lifetime
 # --------------------------------------------------------------------------------------
-
-
-def _content_blocks(entry: Json) -> List[Json]:
-    message = entry.get("message")
-    content = message.get("content") if isinstance(message, dict) else None
-    return [block for block in content if isinstance(block, dict)] if isinstance(content, list) else []
 
 
 def _effort_of(entry: Json) -> Optional[str]:
@@ -572,39 +1030,20 @@ def _effort_of(entry: Json) -> Optional[str]:
 
 
 def _is_denial(entry: Json) -> bool:
+    """A tool call the permission system refused: a permissionDecision of reject or
+    deny, or a toolDenialKind of a denial (user-rejected, permission-rule,
+    automode-*). 'interrupted' is never a denial."""
     decision = entry.get("permissionDecision")
     if isinstance(decision, dict):
         decision = decision.get("decision")
     if isinstance(decision, str) and decision.lower() in DENIAL_DECISIONS:
         return True
     kind = entry.get("toolDenialKind")
-    return isinstance(kind, str) and bool(kind)
+    return isinstance(kind, str) and (kind in DENIAL_KINDS or kind.startswith(DENIAL_KIND_PREFIXES))
 
 
-def _is_turn(entry: Json) -> bool:
-    """A human or SDK prompt; never a tool result, notification, command echo,
-    meta entry or compaction summary."""
-    if entry.get("isMeta") is True or entry.get("isCompactSummary") is True:
-        return False
-    if any(block.get("type") == "tool_result" for block in _content_blocks(entry)):
-        return False
-    origin = entry.get("turnOrigin")
-    if isinstance(origin, str):
-        return origin in TURN_ORIGINS
-    source = entry.get("origin")
-    if isinstance(source, dict) and isinstance(source.get("kind"), str):
-        return bool(source.get("kind") == "human")
-    prompt_source = entry.get("promptSource")
-    if isinstance(prompt_source, str):
-        return prompt_source in ("typed", "sdk")
-    message = entry.get("message")
-    content = message.get("content") if isinstance(message, dict) else None
-    if isinstance(content, list):
-        content = " ".join(
-            str(block.get("text", "")) for block in _content_blocks(entry) if block.get("type") == "text"
-        )
-    text = content.lstrip() if isinstance(content, str) else ""
-    return bool(text) and not text.startswith(("<", "Caveat:", "[Request interrupted"))
+def _is_interrupted(entry: Json) -> bool:
+    return entry.get("toolDenialKind") == INTERRUPTED_KIND
 
 
 def _is_clear_command(entry: Json) -> bool:
@@ -621,6 +1060,7 @@ class _Measure:
     def __init__(self) -> None:
         self.requests: Dict[str, Usage] = {}
         self.request_model: Dict[str, str] = {}
+        self.request_ts: Dict[str, float] = {}
         self.sidechain: Set[str] = set()
         self.main_requests: Set[str] = set()
         self.request_effort: Dict[str, str] = {}
@@ -637,6 +1077,7 @@ class _Measure:
         self.launches = 0
         self.first: Optional[Tuple[float, str]] = None
         self.last: Optional[Tuple[float, str]] = None
+        self.dates: Set[str] = set()
         self.versions: Set[str] = set()
         self.entrypoints: Set[str] = set()
         self.git_branch: Optional[str] = None
@@ -644,6 +1085,7 @@ class _Measure:
     def stamp(self, ts: Optional[float], raw: Any) -> None:
         if ts is None or not isinstance(raw, str):
             return
+        self.dates.add(utc_date(ts))
         if self.first is None or ts < self.first[0]:
             self.first = (ts, raw)
         if self.last is None or ts >= self.last[0]:
@@ -661,7 +1103,7 @@ class _Measure:
             if isinstance(branch, str) and branch:
                 self.git_branch = branch
         if kind == "assistant":
-            self._assistant(entry, sidechain=sidechain, main=main)
+            self._assistant(entry, ts, sidechain=sidechain, main=main)
         elif kind == "user":
             self._user(entry, main=main)
         elif kind == "system":
@@ -671,7 +1113,7 @@ class _Measure:
             elif subtype == "api_error" and entry.get("retryAttempt") is not None:
                 self.retries += 1
 
-    def _assistant(self, entry: Json, *, sidechain: bool, main: bool) -> None:
+    def _assistant(self, entry: Json, ts: Optional[float], *, sidechain: bool, main: bool) -> None:
         message = _dict(entry.get("message"))
         model = message.get("model")
         synthetic = model == SYNTHETIC_MODEL or entry.get("isApiErrorMessage") is True
@@ -683,6 +1125,8 @@ class _Measure:
                 value = int_value(usage.get(key))
                 if value is not None and value > current[key]:
                     current[key] = value
+            if ts is not None and (request_id not in self.request_ts or ts < self.request_ts[request_id]):
+                self.request_ts[request_id] = ts
             if isinstance(model, str) and model:
                 self.request_model[request_id] = model
             if sidechain or entry.get("isSidechain") is True:
@@ -715,7 +1159,7 @@ class _Measure:
         if _is_denial(entry):
             key = next((str(b.get("tool_use_id")) for b in results if b.get("tool_use_id")), None)
             self.denial_ids.add(key or f"entry:{entry.get('uuid')}")
-        else:
+        elif not _is_interrupted(entry):  # a cut-off call is neither a denial nor a failure
             for block in results:
                 if block.get("is_error") is not True:
                     continue
@@ -760,6 +1204,54 @@ class _Measure:
         counts = Counter(pool)
         chosen = sorted(counts.items(), key=lambda item: (-item[1], item[0]))[0][0]
         return (chosen if chosen in EFFORT_LEVELS else None), sorted(set(self.request_effort.values()))
+
+    def days(self, cost_usd: Optional[float], cost_by_model: Optional[Dict[str, Json]]) -> Optional[Json]:
+        """lifetime.days (A1 D1.11) for a lifetime whose own entries span two or more
+        UTC dates: requests and tokens binned by each request's first entry; each
+        model's cost-state cost split by that model's tokens per day, a model with no
+        transcript request by all models' tokens (all on the last day when there are
+        none). Day costs add up to cost_usd exactly; null when cost_usd is null."""
+        if len(self.dates) < 2:
+            return None
+        dates = sorted(self.dates)
+        usage: Dict[str, Usage] = {day: zero_usage() for day in dates}
+        requests: Counter[str] = Counter()
+        tokens: Counter[Tuple[str, str]] = Counter()
+        for request_id, counts in self.requests.items():
+            ts = self.request_ts.get(request_id)
+            day = utc_date(ts) if ts is not None else dates[-1]
+            add_usage(usage.setdefault(day, zero_usage()), counts)
+            requests[day] += 1
+            tokens[(self.request_model.get(request_id, "unknown"), day)] += sum(counts[k] for k in USAGE_KEYS)
+        days = sorted(usage)
+        out: Json = {day: {"requests": requests[day], "usage": usage[day], "cost_usd": None} for day in days}
+        if cost_usd is None:
+            return out
+        every = {day: sum(n for (_, d), n in tokens.items() if d == day) for day in days}
+        raw = {day: 0.0 for day in days}
+        for model, item in sorted((cost_by_model or {}).items()):
+            cost = num_value(item.get("cost_usd")) or 0.0
+            if not cost:
+                continue
+            own = {day: tokens.get((model, day), 0) for day in days}
+            weights = own if sum(own.values()) else every
+            denominator = sum(weights.values())
+            if not denominator:
+                raw[days[-1]] += cost
+                continue
+            for day in days:
+                raw[day] += cost * weights[day] / denominator
+        total = sum(raw.values())
+        if total <= 0:
+            raw = {day: (1.0 if day == days[-1] else 0.0) for day in days}
+            total = 1.0
+        assigned = 0.0
+        for day in days[:-1]:
+            share = _round_cost(cost_usd * raw[day] / total)
+            out[day]["cost_usd"] = share
+            assigned += share
+        out[days[-1]]["cost_usd"] = max(0.0, _round_cost(cost_usd - assigned))
+        return out
 
 
 # --------------------------------------------------------------------------------------
@@ -842,6 +1334,7 @@ class Lifetime:
     copied_entries_excluded: int
     fork_parent: Optional[str]
     shortfall: List[str]
+    days: Optional[Json] = None
 
     @property
     def empty(self) -> bool:
@@ -864,18 +1357,23 @@ class Selection:
     lifetime that holds that prompt when the last cost-state belongs to a concurrent
     writer. first_after: the lifetime whose closing block holds the first cost-state
     line at or after ``offset`` (a /clear predecessor, whose cost-state is written
-    after its SessionEnd returned).
+    after its SessionEnd returned). holding: the lifetime that holds the entry
+    ``uuid`` once it has settled (a lifetime that was still open at a SessionEnd).
     """
 
     mode: str = "all"
     offset: int = 0
     prompt_id: Optional[str] = None
+    uuid: Optional[str] = None
 
 
 def _selected(rows: Sequence[Row], regions: Sequence[Region], selection: Selection) -> List[Region]:
     settled = [r for r in regions if r.settled]
     if selection.mode == "all":
         return settled
+    if selection.mode == "holding":
+        held = next((r for r in settled if any(rows[i].entry.get("uuid") == selection.uuid for i in r.rows)), None)
+        return [held] if held is not None and selection.uuid else []
     cs_rows = [i for i, row in enumerate(rows) if row.kind == COST]
     if selection.mode == "last_before":
         before = [i for i in cs_rows if rows[i].offset < selection.offset]
@@ -944,9 +1442,13 @@ def _cost_delta(end: Json, base: Optional[Json]) -> Optional[Tuple[float, Option
 class Derivation:
     """The result of one derive() call."""
 
-    lifetimes: List[Lifetime]  # settled, non-empty, in file order
+    lifetimes: List[Lifetime]  # settled, non-empty, in closing order
     selected: int  # settled lifetimes the selection named, empty ones included
-    open_after: Optional[int]  # offset after the last cost-state line when activity follows it
+    open_after: Optional[int]  # offset of the first open activity after the last cost-state
+    # Lifetimes still open whose activity runs past the start of the selected ones (a
+    # concurrent writer, a process not yet exited): their first entry's uuid, or None
+    # with the offset of their first row when they have no chain entry.
+    open_tails: List[Tuple[Optional[str], int]] = field(default_factory=list)
 
 
 def derive(
@@ -957,10 +1459,24 @@ def derive(
     projects_root: Optional[Path] = None,
     deadline: Optional[float] = None,
 ) -> List[Lifetime]:
-    """The settled, non-empty lifetimes of one transcript, in file order."""
+    """The settled, non-empty lifetimes of one transcript, in closing order."""
     return derive_detail(
         path, selection=selection, hints=hints, projects_root=projects_root, deadline=deadline
     ).lifetimes
+
+
+def _open_after(rows: Sequence[Row], segmenter: _Segmenter) -> Optional[int]:
+    """Offset of the first row after the last cost-state that belongs to no settled
+    lifetime (a lifetime still open), else None."""
+    cs_rows = segmenter.cost_rows
+    after = cs_rows[-1] + 1 if cs_rows else 0
+    for i in range(after, len(rows)):
+        if rows[i].kind not in (CHAIN, LOOSE):
+            continue
+        region = segmenter.region_of.get(i)
+        if region is None or not region.settled:
+            return rows[i].offset
+    return None
 
 
 def derive_detail(
@@ -984,17 +1500,19 @@ def derive_detail(
         projects_root = path.parent.parent
     session_id = path.stem
     rows = load_rows(path, deadline)
-    regions = segment(rows)
-    cs_rows = [i for i, row in enumerate(rows) if row.kind == COST]
-    open_after: Optional[int] = None
-    if cs_rows and any(row.kind in (CHAIN, LOOSE) for row in rows[cs_rows[-1] + 1:]):
-        after = rows[cs_rows[-1] + 1].offset if cs_rows[-1] + 1 < len(rows) else None
-        open_after = after
-    elif not cs_rows and any(row.kind in (CHAIN, LOOSE) for row in rows):
-        open_after = 0
+    segmenter = _Segmenter(rows)
+    regions = segmenter.run()
+    open_after = _open_after(rows, segmenter)
     targets = _selected(rows, regions, selection)
     if not targets:
         return Derivation([], 0, open_after)
+    since = min((min(r.rows) for r in targets if r.rows), default=targets[0].closing[0])
+    open_tails: List[Tuple[Optional[str], int]] = []
+    for region in regions:
+        if region.settled or not region.rows or max(region.rows) <= since:
+            continue
+        chain = [i for i in region.rows if rows[i].kind == CHAIN]
+        open_tails.append((rows[chain[0]].entry["uuid"] if chain else None, rows[min(region.rows)].offset))
     chain_rows = [i for i, row in enumerate(rows) if row.kind == CHAIN]
     first_region = next((r for r in regions if chain_rows and chain_rows[0] in r.rows), None)
 
@@ -1050,7 +1568,7 @@ def derive_detail(
         lifetime = _lifetime(
             session_id=session_id,
             rows=rows,
-            regions=regions,
+            segmenter=segmenter,
             region=region,
             measure=measures[region.index],
             files=len(files_used[region.index]),
@@ -1060,14 +1578,23 @@ def derive_detail(
         )
         if lifetime is not None and not lifetime.empty:
             lifetimes.append(lifetime)
-    return Derivation(lifetimes, len(targets), open_after)
+    return Derivation(lifetimes, len(targets), open_after, open_tails)
+
+
+def _nearest_dated(rows: Sequence[Row], index: int) -> Optional[str]:
+    """The raw timestamp of the dated row nearest before ``index``, else after it."""
+    for i in list(range(index - 1, -1, -1)) + list(range(index + 1, len(rows))):
+        raw = rows[i].entry.get("timestamp")
+        if rows[i].ts is not None and isinstance(raw, str):
+            return raw
+    return None
 
 
 def _lifetime(
     *,
     session_id: str,
     rows: Sequence[Row],
-    regions: Sequence[Region],
+    segmenter: _Segmenter,
     region: Region,
     measure: _Measure,
     files: int,
@@ -1079,8 +1606,15 @@ def _lifetime(
     start_time, total_duration = int_value(closing.get("startTime")), int_value(closing.get("totalDuration"))
     if start_time is None or total_duration is None or start_time < 0 or total_duration < 0:
         return None  # no stable anchor: such a cost-state cannot name an event
-    if measure.first is None or measure.last is None:
-        return None  # no dated entry: the lifetime cannot be placed in time
+    if measure.first is not None and measure.last is not None:
+        started_at, ended_at = measure.first[1], measure.last[1]
+    else:
+        # Spend with no dated entry of its own (calls only cost-state shows): placed at
+        # the dated entry nearest before its closing cost-state.
+        placed = _nearest_dated(rows, region.closing[0])
+        if placed is None:
+            return None
+        started_at = ended_at = placed
     anchor = f"cs:{start_time}:{total_duration}"
 
     if fork is not None:
@@ -1095,7 +1629,8 @@ def _lifetime(
         base: Optional[Json] = fork.base
         base_known = fork.base is not None
     else:
-        base = rows[region.base].entry if region.base is not None else None
+        base_row = segmenter.base_row(region.rows, start_time, region.closing[0])
+        base = rows[base_row].entry if base_row is not None else None
         base_known = True
     delta = _cost_delta(closing, base) if base_known else None
     cost = delta[0] if delta else None
@@ -1123,22 +1658,22 @@ def _lifetime(
         "api_retries": measure.retries,
         "permission_denials": len(measure.denial_ids),
     }
-    lineage = str(start_time)
+    per_model = delta[3] if delta else None
     return Lifetime(
         session_id=session_id,
         event_id=event_id_for(session_id, anchor),
         anchor=anchor,
         start_source=start_source,
-        started_at=measure.first[1],
-        ended_at=measure.last[1],
+        started_at=started_at,
+        ended_at=ended_at,
         closing_offset=rows[region.closing[0]].offset,
-        cost_lineage=lineage,
+        cost_lineage=str(start_time),
         cum_cost_start_usd=cum_start,
         cum_cost_end_usd=num_value(closing.get("totalCostUSD")),
         cost_usd=cost,
         duration_ms=delta[1] if delta else None,
         api_duration_ms=delta[2] if delta else None,
-        cost_state_usage_by_model=delta[3] if delta else None,
+        cost_state_usage_by_model=per_model,
         usage=measure.usage(),
         usage_by_model=usage_by_model,
         sidechain_usage=measure.usage(measure.sidechain),
@@ -1153,19 +1688,22 @@ def _lifetime(
         versions=sorted(measure.versions),
         entrypoints=sorted(measure.entrypoints),
         forked_from_session_id=fork.parent_session_id if fork else None,
-        concurrent=_concurrent(region, regions),
+        concurrent=_concurrent(region, segmenter.regions),
         subagent_files=files,
         subagent_launches_without_file=max(0, measure.launches - files),
         copied_entries_excluded=len(copied),
         fork_parent=("found" if fork.base is not None else "not-found") if fork else None,
         shortfall=sorted(shortfall),
+        days=measure.days(cost, per_model),
     )
 
 
 @dataclass
 class Context:
     """What the caller adds: the project, what a hook observed, and how the event was
-    produced. Nothing here changes event_id or any measured number."""
+    produced. Nothing here changes event_id or any measured number. The at-start
+    fields and cleared_from_session_id come from a /clear predecessor's note, so
+    they apply only to a lifetime that /clear opened."""
 
     project: str
     recovered: str = "backfill"  # none: the hook of the process that held the lifetime
@@ -1190,6 +1728,7 @@ def build_event(lifetime: Lifetime, context: Context) -> Json:
     ):
         if values:
             labels[key] = ",".join(values)[:80]
+    cleared = lifetime.start_source == "clear"
     lifetime_block: Json = {
         "spec": SPEC,
         "anchor": lifetime.anchor,
@@ -1201,20 +1740,22 @@ def build_event(lifetime: Lifetime, context: Context) -> Json:
         "cum_cost_start_usd": lifetime.cum_cost_start_usd,
         "cum_cost_end_usd": lifetime.cum_cost_end_usd,
         "forked_from_session_id": lifetime.forked_from_session_id,
-        "cleared_from_session_id": context.cleared_from_session_id if lifetime.start_source == "clear" else None,
-        "sprint_at_start": context.sprint_at_start,
-        "phase_at_start": context.phase_at_start,
-        "head_at_start": context.head_at_start,
+        "cleared_from_session_id": context.cleared_from_session_id if cleared else None,
+        "sprint_at_start": context.sprint_at_start if cleared else None,
+        "phase_at_start": context.phase_at_start if cleared else None,
+        "head_at_start": context.head_at_start if cleared else None,
         "concurrent": lifetime.concurrent,
         "recovered": context.recovered,
-        "coverage": {
-            "subagent_files": lifetime.subagent_files,
-            "subagent_launches_without_file": lifetime.subagent_launches_without_file,
-            "copied_entries_excluded": lifetime.copied_entries_excluded,
-            "fork_parent": lifetime.fork_parent,
-            "context": "observed" if context.observed else "unknown",
-            "shortfall": lifetime.shortfall,
-        },
+    }
+    if lifetime.days is not None:
+        lifetime_block["days"] = lifetime.days
+    lifetime_block["coverage"] = {
+        "subagent_files": lifetime.subagent_files,
+        "subagent_launches_without_file": lifetime.subagent_launches_without_file,
+        "copied_entries_excluded": lifetime.copied_entries_excluded,
+        "fork_parent": lifetime.fork_parent,
+        "context": "observed" if context.observed else "unknown",
+        "shortfall": lifetime.shortfall,
     }
     event: Json = {
         "schema_version": "1.1",

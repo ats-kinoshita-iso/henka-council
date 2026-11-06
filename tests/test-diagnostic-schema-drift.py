@@ -8,10 +8,11 @@ the cloud-catcher commit the copy was taken from and the file's SHA-256:
 - the local copy must hash to PINNED_SHA256, so an edit here fails CI until the
   pin is moved together with a new copy from cloud-catcher;
 - when a cloud-catcher checkout is available (CLOUD_CATCHER_DIR, else a sibling
-  ../cloud-catcher), the pinned commit's file must equal the local copy, and the
-  checkout's current file must still hash to the pin, so a schema change upstream
-  fails until both sides are updated together. Without a checkout (as on CI) that
-  half is reported as skipped.
+  ../cloud-catcher), the pinned commit must exist in it and its file must equal the
+  local copy, and the checkout's current file must still hash to the pin, so a
+  schema change upstream fails until both sides are updated together. Without a
+  checkout (as on CI, which has none) that half is reported as skipped: the upstream
+  comparison runs where a cloud-catcher checkout sits next to this repo.
 
 To update: copy the new upstream file byte for byte, then set PINNED_COMMIT and
 PINNED_SHA256 to the upstream commit and the new hash in the same change.
@@ -63,9 +64,9 @@ def main() -> int:
             capture_output=True,
             check=False,
         )
-        if shown.returncode != 0:
-            print(f"SKIP: commit {PINNED_COMMIT[:12]} not in {checkout}; pinned-commit comparison not run")
-        else:
+        check(shown.returncode == 0,
+              f"the pinned commit {PINNED_COMMIT[:12]} is in the cloud-catcher checkout {checkout} (fetch it, or fix the pin)")
+        if shown.returncode == 0:
             check(shown.stdout == local, f"vendored schema equals cloud-catcher {PINNED_COMMIT[:12]}:{UPSTREAM_PATH}")
         current = (checkout / UPSTREAM_PATH).read_bytes()
         check(

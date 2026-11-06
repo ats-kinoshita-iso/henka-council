@@ -66,37 +66,73 @@ It never contains prompt or response text, tool inputs or tool outputs.
   `cost_state_usage_by_model` is the same delta of `modelUsage`, including calls no
   transcript shows. `lifetime.cost_lineage`, `cum_cost_start_usd` and
   `cum_cost_end_usd` are anchors and are never summed. A session's total is the sum
-  of its events, never its latest event.
+  of its events, never its latest event. A lifetime whose own entries span two or
+  more UTC days carries `lifetime.days` (requests, tokens and cost per UTC day, each
+  request on the day of its first entry), which day, month and window sums use in
+  place of `ts` (A1 D1.11).
 - *Identity.* `event_id` is UUIDv5 in namespace `5f0c2b8e-2a7d-4d38-9a51-1c2f1d6e2006`
   over `session-lifetime|<session_id>|cs:<startTime>:<totalDuration>` of the closing
   `cost-state`, and `ts` is the lifetime's latest entry, never the hook's clock, so
-  every writer produces the same line for the same lifetime.
+  every writer mints the same `event_id` for a lifetime; copies differ only in
+  `recovered` and the observed context, and readers keep one per id.
+- *Which process wrote what.* Two processes can append to one transcript at once. A
+  `cost-state` belongs to the process named by the `leafUuid` of the `last-prompt`
+  entry written before it, else to the open lifetime whose tokens fit under its
+  per-model delta. A tool result that carries its turn's `promptId` continues that
+  turn, so a branch beside it with another prompt (the `interrupted` repair of a
+  concurrent resume) is another process; `entrypoint` and the `cost-state`
+  lineage's start time separate two processes at a turn boundary. The base is the
+  `cost-state` of the same lineage the process could have restored, never one of
+  another lineage. Entries a process writes after its own `cost-state` (SIGTERM
+  during a tool call) stay in its lifetime.
 - *Writers.* One deriver (`scripts/session_lifetimes.py`) computes every event. The
   `SessionEnd` hook calls it for the lifetime that just closed; for a `/clear`
   predecessor, whose closing `cost-state` is written only after its own hook
-  returned, the hook leaves a note keyed by `CLAUDE_PID` in `.council/state/run/` (a
-  directory that ignores itself in git) and the successor's `SessionEnd` in the same
-  process settles it. `scripts/session-diagnostics.py --backfill <transcript.jsonl>`
+  returned, the hook leaves a note keyed by `CLAUDE_PID` (with the process start
+  time, so a reused pid is not taken for the same process) in `.council/state/run/`
+  (a directory that ignores itself in git), and the successor's `SessionEnd` in the
+  same process settles it. A lifetime still open at a `SessionEnd` (a concurrent
+  process) gets a pending note there too. A note settled by another process's
+  `SessionEnd` is labelled `recovered: sweep`. The hook looks for the governed root
+  (the nearest directory holding `.council/`) from the session's directory upward,
+  within its git repo. `scripts/session-diagnostics.py --backfill <transcript.jsonl>`
   derives every settled lifetime of a transcript afterwards (`--print` only prints).
-- *Append protocol.* An `event_id` already in the ledger or in its newest rotated
-  archive is skipped. Appends hold an exclusive lock file and write one LF-terminated
-  UTF-8 line per event, validated against `schemas/diagnostic-event.schema.json`
-  (with `jsonschema` when installed, otherwise with structural checks).
-- *Time budget.* The hook does about 1.0 s of work (`DIAGNOSTICS_BUDGET_MS`); work that
-  would take longer is left as a pending note that a later `SessionEnd` of the same
-  project settles. Claude Code ignores a `timeout` declared for a plugin's
+- *Append protocol.* Events are validated against `schemas/diagnostic-event.schema.json`
+  (with `jsonschema` when installed, otherwise with structural checks). The hook
+  first writes them to `.council/state/run/spool-<event_id>.json`, then removes the
+  notes they came from, then appends under an exclusive lock file
+  (`.council/state/run/diagnostics.lock`; a lock older than 5 s is broken): an
+  `event_id` already in the ledger or in its newest rotated archive is skipped, and
+  each event is one LF-terminated UTF-8 line. An event whose append failed (lock
+  held, time up) stays in the spool and the next `SessionEnd` of the project
+  appends it. The backfill command, `measure-projection-cost.py --emit-event` and
+  `rotate-audit-log.py` (for this file) take the same lock.
+- *Time budget.* The hook does about 1.0 s of work (`DIAGNOSTICS_BUDGET_MS`), then waits
+  up to 0.3 s for the lock; work that would take longer is left as a pending note that
+  a later `SessionEnd` of the same project settles, oldest note first. A note whose
+  transcript is larger than 64 MB is not retried by the hook (such a file does not
+  parse within the budget; Stage 1 parses the whole transcript): record it with the
+  backfill command. A note still unsettled after 30 days, or whose transcript is
+  gone, is dropped. Claude Code ignores a `timeout` declared for a plugin's
   `SessionEnd` hook; `CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS` in the settings `env`
   raises its budget (seen in `claude -p` probes). The opt-in live canary
   `tests/live/test-sessionend-budget-canary.sh` checks that the installed Claude Code
-  still lets a 1.0 s SessionEnd hook finish and cancels a 2.5 s one.
-- *Crew guard.* With `AUTOMATE_RUN` set (auto-mate crews and gates), the SessionEnd,
-  PostToolUse and Stop hooks write nothing.
+  still lets a SessionEnd hook of 1.0 s + 0.3 s + 0.1 s finish and cancels a 1.7 s one.
+- *Crew guard.* With `AUTOMATE_RUN` set, the SessionEnd, PostToolUse and Stop hooks
+  write nothing. auto-mate does not set it for its crews and gates yet (P2-AM-2), so
+  the guard takes effect once it does.
 - *Stage 1 limits* (no `SessionStart` hook yet): a SIGKILLed lifetime gets no event
   of its own and its tokens land in the next event as `lifetime.coverage.shortfall`;
-  a fork's base comes from cost lineage (the same-lineage parent transcript), and a
-  fork whose parent is not found has `cost_usd: null` and
-  `coverage.fork_parent: not-found`; a lost line comes back only through a backfill;
-  a lifetime that crosses UTC midnight carries no `lifetime.days` bins yet.
+  a `/clear` predecessor is settled only at its successor's `SessionEnd` in the same
+  process; a fork's base comes from cost lineage (the same-lineage parent transcript),
+  and a fork whose parent is not found has `cost_usd: null` and
+  `coverage.fork_parent: not-found` (its copied entries are then found by the fork's
+  first queue-operation, or for an interactive fork by the time gap at the fork
+  point); a lost line comes back only through a backfill. Nothing on disk tells a
+  process that resumed from another, still running, process's tool call from one
+  that resumed after a kill, so at the resumer's own `SessionEnd` the other's
+  in-flight request is counted in the resumer's event (and shows as shortfall);
+  a later derivation, once the other process wrote its tool result, separates them.
 - *Schema.* `schemas/diagnostic-event.schema.json` is a byte-identical copy of the
   schema owned by the cloud-catcher meta-repo (ADR-0006 there);
   `tests/test-diagnostic-schema-drift.py` pins the upstream commit and SHA-256.

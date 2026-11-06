@@ -45,6 +45,14 @@ if grep -q '"schema_version": "1.1"' "$LOG" 2>/dev/null && grep -q '"kind": "ses
 else
     fail "Event content unexpected: $(head -c 300 "$LOG" 2>/dev/null)"
 fi
+# A1 D1.5: ts is the lifetime's latest entry, never the hook's clock (the deriver's own
+# numbers are compared event for event in tests/scripts/test-session-diagnostics.py).
+if grep -q '"ts": "2026-11-04T20:55:04.349Z"' "$LOG" 2>/dev/null \
+   && grep -q '"anchor": "cs:1793825684600:6908"' "$LOG" 2>/dev/null; then
+    pass "ts is the resumed lifetime's latest entry and the anchor its closing cost-state"
+else
+    fail "ts or anchor unexpected: $(head -c 300 "$LOG" 2>/dev/null)"
+fi
 if grep -q "CANARY" "$LOG" 2>/dev/null; then fail "Transcript text leaked into the event"; else pass "No prompt, response or tool text in the event"; fi
 
 # --- Test 2: a second firing on the same state appends nothing ---

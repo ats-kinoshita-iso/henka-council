@@ -24,7 +24,9 @@ def read_payload() -> dict:
     """Return the hook payload from stdin as a dict; {} when absent or malformed.
 
     Claude Code sends raw UTF-8. stdin is read as bytes and decoded as UTF-8, never
-    in the locale's code page, so a non-ASCII cwd or path survives on Windows too.
+    in the locale's code page. hooks/win/session-diagnostics.ps1 passes the raw bytes
+    through, so a non-ASCII cwd or path survives there on Windows too;
+    hooks/win/log-tool-call.ps1 still reads stdin as text in PowerShell first.
     """
     try:
         stream = getattr(sys.stdin, "buffer", None)
@@ -63,6 +65,27 @@ def resolve_root(cwd: Optional[str]) -> pathlib.Path:
         if (candidate / ".git").exists():
             return candidate
     return start
+
+
+def governed_root(cwd: Optional[str]) -> Optional[pathlib.Path]:
+    """The governed project root: the nearest directory at or above CLAUDE_PROJECT_DIR,
+    then at or above the payload cwd, that already holds a .council/ directory.
+
+    Claude Code sets CLAUDE_PROJECT_DIR to the directory the session started in,
+    which can be a subdirectory of the governed repo. The walk stops at a git root
+    (a .git directory or file) and at the filesystem root; the process cwd is never
+    used and nothing is created. None when no governed root is found.
+    """
+    for start in (os.environ.get("CLAUDE_PROJECT_DIR"), cwd):
+        if not start:
+            continue
+        path = pathlib.Path(start.rstrip("/\\") or start)
+        for candidate in (path, *path.parents):
+            if (candidate / ".council").is_dir():
+                return candidate
+            if (candidate / ".git").exists():
+                break
+    return None
 
 
 def council_dir(root: pathlib.Path) -> Optional[pathlib.Path]:

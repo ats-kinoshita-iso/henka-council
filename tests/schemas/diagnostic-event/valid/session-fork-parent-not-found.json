@@ -69,7 +69,7 @@
     "coverage": {
       "subagent_files": 0,
       "subagent_launches_without_file": 0,
-      "copied_entries_excluded": 0,
+      "copied_entries_excluded": 26,
       "fork_parent": "not-found",
       "context": "observed",
       "shortfall": []

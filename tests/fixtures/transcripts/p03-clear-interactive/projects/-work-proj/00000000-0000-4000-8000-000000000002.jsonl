@@ -20,7 +20,7 @@
 {"type":"api-request-blob","sessionId":"00000000-0000-4000-8000-000000000002"}
 {"type":"api-request-blob","sessionId":"00000000-0000-4000-8000-000000000002"}
 {"type":"api-request","sessionId":"00000000-0000-4000-8000-000000000002","timestamp":"2026-11-04T20:49:15.122Z","version":"2.1.318"}
-{"type":"last-prompt","sessionId":"00000000-0000-4000-8000-000000000002"}
+{"type":"last-prompt","leafUuid":"e0000029-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000002"}
 {"type":"mode","sessionId":"00000000-0000-4000-8000-000000000002"}
 {"type":"atis-latch","sessionId":"00000000-0000-4000-8000-000000000002"}
 {"type":"ai-title","sessionId":"00000000-0000-4000-8000-000000000002"}
@@ -28,7 +28,7 @@
 {"type":"attachment","uuid":"e0000031-0000-4000-8000-000000000000","parentUuid":"e0000030-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000002","timestamp":"2026-11-04T20:49:15.804Z","isSidechain":false,"version":"2.1.318","entrypoint":"cli","gitBranch":"branch-1"}
 {"type":"system","uuid":"e0000032-0000-4000-8000-000000000000","parentUuid":"e0000031-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000002","timestamp":"2026-11-04T20:49:15.845Z","isSidechain":false,"version":"2.1.318","entrypoint":"cli","gitBranch":"branch-1","subtype":"stop_hook_summary"}
 {"type":"system","uuid":"e0000033-0000-4000-8000-000000000000","parentUuid":"e0000032-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000002","timestamp":"2026-11-04T20:49:15.849Z","isSidechain":false,"isMeta":false,"version":"2.1.318","entrypoint":"cli","gitBranch":"branch-1","subtype":"turn_duration"}
-{"type":"last-prompt","sessionId":"00000000-0000-4000-8000-000000000002"}
+{"type":"last-prompt","leafUuid":"e0000033-0000-4000-8000-000000000000","sessionId":"00000000-0000-4000-8000-000000000002"}
 {"type":"ai-title","sessionId":"00000000-0000-4000-8000-000000000002"}
 {"type":"mode","sessionId":"00000000-0000-4000-8000-000000000002"}
 {"type":"atis-latch","sessionId":"00000000-0000-4000-8000-000000000002"}
