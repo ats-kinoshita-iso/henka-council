@@ -1,6 +1,8 @@
 # PreToolUse hook — block Write/Edit on append-only council logs.
 # Reads Claude Code tool-call envelope JSON from stdin.
-# Exit 0 = allow.  Non-zero exit = block (stderr message surfaced to user).
+# Exit 0 = allow.  Exit 2 = block: Claude Code blocks a PreToolUse call only on
+# exit 2 (any other non-zero code is a non-blocking error and the call proceeds);
+# stderr is shown to the model as the reason.
 # Requires PowerShell 7+ (pwsh).
 
 $ProtectedFiles = @(
@@ -30,7 +32,11 @@ try {
 }
 
 $toolName = if ($envelope.tool_name) { $envelope.tool_name } else { '' }
-$filePath = if ($envelope.tool_args -and $envelope.tool_args.file_path) { $envelope.tool_args.file_path } else { '' }
+# Claude Code sends the tool arguments as tool_input; tool_args is the legacy
+# envelope shape, still accepted.
+$filePath = ''
+if ($envelope.tool_input -and $envelope.tool_input.file_path) { $filePath = $envelope.tool_input.file_path }
+elseif ($envelope.tool_args -and $envelope.tool_args.file_path) { $filePath = $envelope.tool_args.file_path }
 
 # Only inspect Write and Edit tool calls
 if ($toolName -ne 'Write' -and $toolName -ne 'Edit') {
@@ -59,7 +65,7 @@ foreach ($protected in $ProtectedFiles) {
     if ($absPath -eq $protected -or $absPath.EndsWith("/$protected") -or $normPath -eq $protected) {
         [Console]::Error.WriteLine("BLOCKED: Direct $toolName on append-only log '$filePath' is forbidden.")
         [Console]::Error.WriteLine("  Approved write paths: scripts/append-henka.py, scripts/append-decision.py")
-        exit 1
+        exit 2
     }
 }
 

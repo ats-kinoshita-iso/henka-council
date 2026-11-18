@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # PreToolUse hook — block Write/Edit on append-only council logs.
 # Reads Claude Code tool-call envelope JSON from stdin.
-# Exit 0 = allow.  Non-zero exit = block (stderr message surfaced to user).
+# Exit 0 = allow.  Exit 2 = block: Claude Code blocks a PreToolUse call only on
+# exit 2 (any other non-zero code is a non-blocking error and the call proceeds);
+# stderr is shown to the model as the reason.
 
 set -uo pipefail
 
@@ -20,7 +22,7 @@ fi
 # JSON value extractor: prefer jq; fall back to python3; fail open if neither.
 # Uses env var _JSON_INPUT to pass data safely to python3 (avoids pipe+heredoc conflict).
 _json_get() {
-    # $1 = json string, $2 = dotpath (e.g. ".tool_name" or ".tool_args.file_path")
+    # $1 = json string, $2 = dotpath (e.g. ".tool_name" or ".tool_input.file_path")
     local json="$1" dotpath="$2"
     if command -v jq &>/dev/null; then
         printf '%s' "$json" | jq -r "${dotpath} // empty" 2>/dev/null || true
@@ -44,7 +46,13 @@ except Exception:
 }
 
 tool_name=$(_json_get "$envelope" ".tool_name")
-file_path=$(_json_get "$envelope" ".tool_args.file_path")
+# Claude Code sends the tool arguments as tool_input; tool_args is the legacy
+# envelope shape, still accepted. Two lookups, not one jq "//" expression: the
+# python3 fallback in _json_get does not understand "//".
+file_path=$(_json_get "$envelope" ".tool_input.file_path")
+if [[ -z "$file_path" ]]; then
+    file_path=$(_json_get "$envelope" ".tool_args.file_path")
+fi
 
 # Only inspect Write and Edit tool calls
 if [[ "$tool_name" != "Write" && "$tool_name" != "Edit" ]]; then
@@ -71,7 +79,7 @@ for protected in "${PROTECTED_FILES[@]}"; do
     if [[ "$abs_path" == "$protected" || "$abs_path" == *"/$protected" || "$norm_path" == "$protected" ]]; then
         echo "BLOCKED: Direct ${tool_name} on append-only log '${file_path}' is forbidden." >&2
         echo "  Approved write paths: scripts/append-henka.py, scripts/append-decision.py" >&2
-        exit 1
+        exit 2
     fi
 done
 
