@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # PreToolUse hook — block irreversible Bash commands when effective autonomy level < 5.
 # Reads Claude Code tool-call envelope JSON from stdin.
-# Exit 0 = allow.  Non-zero exit = block.
+# Exit 0 = allow.  Exit 2 = block: Claude Code blocks a PreToolUse call only on
+# exit 2 (any other non-zero code is a non-blocking error and the call proceeds);
+# stderr is shown to the model as the reason.
 
 set -uo pipefail
 
@@ -120,7 +122,12 @@ if (( level >= 5 )); then
 fi
 
 # Extract the command
-command_str=$(_json_get "$envelope" ".tool_args.command")
+# Claude Code sends the tool arguments as tool_input; tool_args is the legacy
+# envelope shape, still accepted (two lookups: the python3 fallback has no "//").
+command_str=$(_json_get "$envelope" ".tool_input.command")
+if [[ -z "$command_str" ]]; then
+    command_str=$(_json_get "$envelope" ".tool_args.command")
+fi
 
 if [[ -z "$command_str" ]]; then
     exit 0
@@ -132,7 +139,7 @@ for pattern in "${IRREVERSIBLE_PATTERNS[@]}"; do
         echo "BLOCKED: Irreversible command '${pattern}' detected in Bash tool call." >&2
         echo "  Effective autonomy level is ${level} (< 5). Irreversible operations require level 5." >&2
         echo "  Command: ${command_str}" >&2
-        exit 1
+        exit 2
     fi
 done
 
