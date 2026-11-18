@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PostToolUse audit logger: one schema-valid entry per tool call.
+"""PostToolUse and PostToolUseFailure audit logger: one schema-valid entry per tool call.
 
 Reads the native Claude Code hook payload from stdin (``tool_name``,
 ``tool_input``, ``tool_response``, ``cwd``, ``session_id``, ``tool_use_id``,
@@ -17,6 +17,13 @@ Invariants (HKP-0003, auto-mate/docs/handoff/council-native-hooks):
   ``command=...``, ``pattern=...``, else the first scalar input);
 - ``andon_pull_count`` is always ``null``: andon is a policy evaluated over
   the log, not a counter incremented while logging;
+- an entry is ``event_type: andon-signal`` only when a Task or Agent call's
+  returned reply carries a concrete ``andon_signal`` of type ``alert`` or
+  ``stop``; the dispatch prompt (in ``tool_input`` and echoed back in
+  ``tool_response.prompt``) is never read, because it names the signal itself
+  (review finding C06). The type and the issuing agent are recorded;
+- a failed call (``PostToolUseFailure``) is logged with ``tool_outcome: error``
+  (review finding C05);
 - with ``AUTOMATE_RUN`` set (an auto-mate crew or gate) nothing is written;
 - the script always exits 0 and swallows its own errors.
 
@@ -27,6 +34,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -80,12 +88,62 @@ def outcome_of(payload: dict) -> str:
     return "success"
 
 
-def is_andon(payload: dict) -> bool:
-    blob = json.dumps(
-        {"i": payload.get("tool_input"), "r": payload.get("tool_response")},
-        ensure_ascii=False,
-    ).lower()
-    return "andon_signal" in blob
+# Tools whose result is another agent's reply: the only place a signal is raised.
+ANDON_TOOLS = frozenset({"Task", "Agent"})
+# A concrete signal in that reply: `andon_signal: stop`, "andon_signal": "alert" or
+# "andon_signal": {"type": "stop", ...}. The envelope's own "andon_signal: alert | stop"
+# names both types and is not a signal.
+ANDON_RE = re.compile(
+    r"andon_signal[`\"']?\s*[:=]\s*(?:\{[^{}]*?[\"']?type[\"']?\s*[:=]\s*)?[`\"']?"
+    r"(alert|stop)\b(?![`\"']?\s*\|)",
+    re.IGNORECASE,
+)
+
+
+def reply_text(tool_response: object) -> str:
+    """The text an agent returned: ``content`` as a string or as text blocks.
+
+    Only the reply is read. The Agent tool echoes the dispatch prompt back under
+    ``prompt``, and a dispatch prompt names ``andon_signal: alert`` and
+    ``andon_signal: stop`` as instructions, so reading it would mark every dispatch.
+    """
+    if isinstance(tool_response, str):
+        return tool_response
+    if not isinstance(tool_response, dict):
+        return ""
+    content = tool_response.get("content")
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, dict) and isinstance(block.get("text"), str):
+                parts.append(block["text"])
+            elif isinstance(block, str):
+                parts.append(block)
+        return "\n".join(parts)
+    return ""
+
+
+def andon_signal(payload: dict) -> tuple[str, str] | None:
+    """(signal type, issuing agent) when a Task or Agent reply carries a signal.
+
+    A background agent's reply arrives later as a task notification, outside
+    PostToolUse, so its signal is not logged here.
+    """
+    if payload.get("tool_name") not in ANDON_TOOLS:
+        return None
+    response = payload.get("tool_response")
+    match = ANDON_RE.search(reply_text(response))
+    if match is None:
+        return None
+    issuer = None
+    if isinstance(response, dict):
+        issuer = response.get("agentType") or response.get("agentId")
+    tool_input = payload.get("tool_input")
+    if not issuer and isinstance(tool_input, dict):
+        issuer = tool_input.get("subagent_type")
+    return match.group(1).lower(), str(issuer or "unknown")
 
 
 def main() -> int:
@@ -110,10 +168,11 @@ def main() -> int:
         tool_input = payload.get("tool_args")  # legacy envelope shape
 
     sprint = sprint_context(root)
+    signal = andon_signal(payload)
     entry = {
         "entry_id": f"AUD-{new_hex()}",
         "timestamp": now_iso(),
-        "event_type": "andon-signal" if is_andon(payload) else "tool-call",
+        "event_type": "andon-signal" if signal else "tool-call",
         "agent_id": str(payload.get("agent_id") or payload.get("agent_type") or "session"),
         "sprint_context": sprint if isinstance(sprint, int) else None,
         "tool_name": str(payload.get("tool_name") or "unknown"),
@@ -127,6 +186,8 @@ def main() -> int:
     tool_use_id = payload.get("tool_use_id")
     if isinstance(tool_use_id, str) and tool_use_id:
         entry["tool_use_id"] = tool_use_id
+    if signal:
+        entry["andon_signal_type"], entry["andon_issuer"] = signal
 
     append_jsonl(target, entry)
     return 0

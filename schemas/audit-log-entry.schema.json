@@ -48,6 +48,15 @@
       "type": "string",
       "description": "Tool-use id from the hook payload, so a tool call can be matched to its transcript entry."
     },
+    "andon_signal_type": {
+      "type": "string",
+      "enum": ["alert", "stop"],
+      "description": "On event_type andon-signal only: the signal type found in the Task or Agent reply."
+    },
+    "andon_issuer": {
+      "type": "string",
+      "description": "On event_type andon-signal only: the issuing agent (the reply's agentType or agentId, else the dispatched subagent_type, else 'unknown')."
+    },
     "sprint_context": {
       "type": [
         "integer",

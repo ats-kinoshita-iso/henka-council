@@ -222,8 +222,12 @@ than the Level-5 decision. In that case the normal unconditional halt applies.
 ## Pull-Rate Tracking Reference
 
 The orchestrator tracks pull-rate (andon signal frequency) per agent in
-`audit-log.jsonl`. Each `PostToolUse` hook entry records the agent ID and
-signal type when an `andon_signal` is present in the agent's output.
+`audit-log.jsonl`. The audit logger marks a Task or Agent call as
+`event_type: andon-signal` when the reply the agent returned carries a concrete
+`andon_signal: alert` or `andon_signal: stop`, and records `andon_signal_type`
+and `andon_issuer`. It never reads the dispatch prompt, which names the signal
+itself. A background agent's reply arrives later as a task notification and is
+not in the audit log; count those signals from the orchestrator's own record.
 
 ### Pull-Rate Counting and Weighting
 
@@ -375,7 +379,7 @@ When any `andon_signal` arrives:
       write acknowledgment first.
 - [ ] For `alert`: dispatch swarm (parallel, ≤4 agents, takt-bounded 10 min).
 - [ ] Do NOT filter, defer, or second-guess any signal.
-- [ ] Pull-rate is derived from `event_type: andon-signal` entries in `audit-log.jsonl` for the issuing agent (the PostToolUse hook keeps no counter; `andon_pull_count` is always null since the native-hook logger, HKP-0003)
+- [ ] Pull-rate is derived from `event_type: andon-signal` entries in `audit-log.jsonl` for the issuing agent (`andon_issuer`; background agents' signals are not logged there; the PostToolUse hook keeps no counter; `andon_pull_count` is always null since the native-hook logger, HKP-0003)
       (weight 2 for stop, weight 1 for alert). Check anomaly thresholds.
 - [ ] If `alert` times out: escalate to `stop`.
 - [ ] On resolution: wait for originating agent's `resume` signal, then

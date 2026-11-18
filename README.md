@@ -122,6 +122,11 @@ Add this `hooks` block to your target project's `.claude/settings.local.json`:
       "hooks": [{ "type": "command",
                   "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/log-tool-call.sh" }] }
   ],
+  "PostToolUseFailure": [
+    { "matcher": "*",
+      "hooks": [{ "type": "command",
+                  "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/log-tool-call.sh" }] }
+  ],
   "Stop": [
     { "hooks": [{ "type": "command",
                   "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-stopped-marker.sh" }] }

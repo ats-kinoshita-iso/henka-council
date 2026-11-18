@@ -46,7 +46,7 @@ The only sanctioned write path is the validated append scripts (Sprint 4).
 |---|---|
 | `.council/henka-register.jsonl` | `scripts/append-henka.py` (validates schema before appending) |
 | `.council/decision-log.jsonl` | `scripts/append-decision.py` (validates schema before appending) |
-| `.council/audit-log.jsonl` | PostToolUse hook only (`hooks/log-tool-call.*` over `scripts/log-tool-call.py`) |
+| `.council/audit-log.jsonl` | PostToolUse and PostToolUseFailure hooks only (`hooks/log-tool-call.*` over `scripts/log-tool-call.py`) |
 | `.council/diagnostics.jsonl` | SessionEnd hook (`hooks/session-diagnostics.*` over `scripts/session-diagnostics.py`), its backfill command (`scripts/session-diagnostics.py --backfill`) and `scripts/measure-projection-cost.py --emit-event` |
 
 **Diagnostics log (`diagnostics.jsonl`):** one `kind: session` event (schema 1.1)
