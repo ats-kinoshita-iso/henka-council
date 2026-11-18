@@ -52,7 +52,7 @@ expect() {
 }
 
 # --- Native payloads: BLOCK (exit 2) ---
-for log in henka-register decision-log audit-log; do
+for log in henka-register decision-log audit-log diagnostics; do
     expect 2 "native Write on .council/${log}.jsonl is blocked" \
         "$(payload Write "tool_input.file_path=/work/proj/.council/${log}.jsonl")"
 done
@@ -91,6 +91,8 @@ expect 2 "legacy Write on decision-log.jsonl is blocked" \
     '{"tool_name":"Write","tool_args":{"file_path":".council/decision-log.jsonl"},"cwd":"/tmp","session_id":"test"}'
 expect 2 "legacy Write on audit-log.jsonl is blocked" \
     '{"tool_name":"Write","tool_args":{"file_path":".council/audit-log.jsonl"},"cwd":"/tmp","session_id":"test"}'
+expect 2 "legacy Write on diagnostics.jsonl is blocked (ADR-0006: append-only, hook-written)" \
+    '{"tool_name":"Write","tool_args":{"file_path":".council/diagnostics.jsonl"},"cwd":"/tmp","session_id":"test"}'
 expect 2 "legacy Edit on decision-log.jsonl is blocked" \
     '{"tool_name":"Edit","tool_args":{"file_path":".council/decision-log.jsonl"},"cwd":"/tmp","session_id":"test"}'
 expect 2 "legacy bare henka-register.jsonl from cwd=.council is blocked (issue #18)" \

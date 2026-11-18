@@ -1,0 +1,133 @@
+{
+  "schema_version": "1.1",
+  "event_id": "66c5c48c-8bb5-5d35-9ac0-88a8c7f76db6",
+  "ts": "2026-11-05T00:00:23.912Z",
+  "source": "claude-code-session",
+  "kind": "session",
+  "project": "henka-council",
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "sprint": null,
+  "phase": null,
+  "git_branch": "branch-1",
+  "head": null,
+  "model": "model-c",
+  "effort": "max",
+  "usage": {
+    "input_tokens": 780,
+    "output_tokens": 849813,
+    "cache_read_input_tokens": 96541332,
+    "cache_creation_input_tokens": 2305947
+  },
+  "usage_by_model": {
+    "model-c": {
+      "input_tokens": 780,
+      "output_tokens": 849813,
+      "cache_read_input_tokens": 96541332,
+      "cache_creation_input_tokens": 2305947
+    }
+  },
+  "sidechain_usage": {
+    "input_tokens": 682,
+    "output_tokens": 779754,
+    "cache_read_input_tokens": 85494810,
+    "cache_creation_input_tokens": 1939113
+  },
+  "cost_state_usage_by_model": {
+    "model-c": {
+      "input_tokens": 10740,
+      "output_tokens": 861158,
+      "cache_read_input_tokens": 97909701,
+      "cache_creation_input_tokens": 2309300,
+      "cost_usd": 49.5028742
+    }
+  },
+  "cost_usd": 49.5028742,
+  "cost_source": "claude-code-estimate",
+  "duration_ms": 6225483,
+  "api_duration_ms": 8790861,
+  "thinking_duration_ms": 5675163,
+  "num_turns": 0,
+  "counts": {
+    "tool_calls": 426,
+    "tool_calls_by_tool": {
+      "Bash": 376,
+      "Edit": 4,
+      "Read": 3,
+      "ReadNotifications": 3,
+      "SendUserFile": 1,
+      "StructuredOutput": 6,
+      "TaskCreate": 1,
+      "TaskUpdate": 2,
+      "ToolSearch": 1,
+      "Workflow": 1,
+      "Write": 10,
+      "mcp__srv2__tool5": 5,
+      "mcp__srv3__tool10": 1,
+      "mcp__srv3__tool11": 10,
+      "mcp__srv3__tool4": 1,
+      "mcp__srv3__tool8": 1
+    },
+    "tool_failures": 7,
+    "tool_failures_by_tool": {
+      "Bash": 6,
+      "mcp__srv3__tool11": 1
+    },
+    "subagents": 6,
+    "compactions": 1,
+    "api_retries": 0,
+    "permission_denials": 0
+  },
+  "outcome": "ended",
+  "lifetime": {
+    "spec": "session-lifetime/1",
+    "anchor": "cs:1793461284021:35833781",
+    "start_source": "resume",
+    "end_reason": null,
+    "started_at": "2026-11-04T22:21:02.066Z",
+    "ended_at": "2026-11-05T00:00:23.912Z",
+    "cost_lineage": "1793461284021",
+    "cum_cost_start_usd": 249.9646140499997,
+    "cum_cost_end_usd": 299.4674882499995,
+    "forked_from_session_id": null,
+    "cleared_from_session_id": null,
+    "sprint_at_start": null,
+    "phase_at_start": null,
+    "head_at_start": null,
+    "concurrent": false,
+    "recovered": "backfill",
+    "days": {
+      "2026-11-04": {
+        "requests": 387,
+        "usage": {
+          "input_tokens": 778,
+          "output_tokens": 847560,
+          "cache_read_input_tokens": 96277408,
+          "cache_creation_input_tokens": 2302216
+        },
+        "cost_usd": 49.368856086
+      },
+      "2026-11-05": {
+        "requests": 1,
+        "usage": {
+          "input_tokens": 2,
+          "output_tokens": 2253,
+          "cache_read_input_tokens": 263924,
+          "cache_creation_input_tokens": 3731
+        },
+        "cost_usd": 0.134018114
+      }
+    },
+    "coverage": {
+      "subagent_files": 6,
+      "subagent_launches_without_file": 0,
+      "copied_entries_excluded": 0,
+      "fork_parent": null,
+      "context": "unknown",
+      "shortfall": []
+    }
+  },
+  "labels": {
+    "claude_code_version": "2.1.318",
+    "entrypoint": "remote_mobile"
+  }
+}

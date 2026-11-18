@@ -1,0 +1,74 @@
+[
+ {
+  "snapshot": "snapshots/01-session-end.jsonl",
+  "transcript": "projects/-work-proj/00000000-0000-4000-8000-000000000001.jsonl",
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "reason": "other",
+  "prompt_id": "p0000001-0000-4000-8000-000000000000",
+  "pid": null,
+  "lines": 27
+ },
+ {
+  "snapshot": "snapshots/02-session-end.jsonl",
+  "transcript": "projects/-work-proj/00000000-0000-4000-8000-000000000001.jsonl",
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "reason": "other",
+  "prompt_id": "p0000002-0000-4000-8000-000000000000",
+  "pid": null,
+  "lines": 39
+ },
+ {
+  "snapshot": "snapshots/03-session-end.jsonl",
+  "transcript": "projects/-work-proj/00000000-0000-4000-8000-000000000001.jsonl",
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "reason": "other",
+  "prompt_id": "p0000003-0000-4000-8000-000000000000",
+  "pid": null,
+  "lines": 49
+ },
+ {
+  "snapshot": "snapshots/04-session-end.jsonl",
+  "transcript": "projects/-work-proj/00000000-0000-4000-8000-000000000001.jsonl",
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "reason": "other",
+  "prompt_id": "p0000004-0000-4000-8000-000000000000",
+  "pid": null,
+  "lines": 65
+ },
+ {
+  "snapshot": "snapshots/05-session-end.jsonl",
+  "transcript": "projects/-work-proj/00000000-0000-4000-8000-000000000002.jsonl",
+  "session_id": "00000000-0000-4000-8000-000000000002",
+  "reason": "other",
+  "prompt_id": "p0000005-0000-4000-8000-000000000000",
+  "pid": null,
+  "lines": 39
+ },
+ {
+  "snapshot": "snapshots/06-session-end.jsonl",
+  "transcript": "projects/-work-proj/00000000-0000-4000-8000-000000000001.jsonl",
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "reason": "clear",
+  "prompt_id": "p0000007-0000-4000-8000-000000000000",
+  "pid": null,
+  "lines": 67
+ },
+ {
+  "snapshot": "snapshots/07-session-end.jsonl",
+  "transcript": "projects/-work-proj/00000000-0000-4000-8000-000000000003.jsonl",
+  "session_id": "00000000-0000-4000-8000-000000000003",
+  "reason": "other",
+  "prompt_id": null,
+  "pid": null,
+  "lines": 6
+ },
+ {
+  "snapshot": "snapshots/08-session-end.jsonl",
+  "transcript": "projects/-work-proj/00000000-0000-4000-8000-000000000003.jsonl",
+  "session_id": "00000000-0000-4000-8000-000000000003",
+  "reason": "other",
+  "prompt_id": "p0000006-0000-4000-8000-000000000000",
+  "pid": null,
+  "lines": 35
+ }
+]

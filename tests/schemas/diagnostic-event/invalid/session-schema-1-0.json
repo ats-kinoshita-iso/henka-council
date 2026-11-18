@@ -1,0 +1,93 @@
+{
+  "schema_version": "1.0",
+  "event_id": "2e1ed14b-4547-571a-8539-4e86b22f257f",
+  "ts": "2026-11-04T20:54:50.216Z",
+  "source": "claude-code-session",
+  "kind": "session",
+  "project": "henka-council",
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "sprint": 9,
+  "phase": 2,
+  "git_branch": "branch-1",
+  "head": "4c1d9e0b7a2f6e3d8c5b1a0f9e8d7c6b5a4f3e2d",
+  "model": "model-a",
+  "effort": "medium",
+  "usage": {
+    "input_tokens": 8,
+    "output_tokens": 162,
+    "cache_read_input_tokens": 48112,
+    "cache_creation_input_tokens": 17992
+  },
+  "usage_by_model": {
+    "model-a": {
+      "input_tokens": 8,
+      "output_tokens": 162,
+      "cache_read_input_tokens": 48112,
+      "cache_creation_input_tokens": 17992
+    }
+  },
+  "sidechain_usage": {
+    "input_tokens": 2,
+    "output_tokens": 5,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 10101
+  },
+  "cost_state_usage_by_model": {
+    "model-a": {
+      "input_tokens": 8,
+      "output_tokens": 162,
+      "cache_read_input_tokens": 48112,
+      "cache_creation_input_tokens": 17992,
+      "cost_usd": 0.003403745
+    }
+  },
+  "cost_usd": 0.003403745,
+  "cost_source": "claude-code-estimate",
+  "duration_ms": 5630,
+  "api_duration_ms": 5470,
+  "thinking_duration_ms": 0,
+  "num_turns": 1,
+  "counts": {
+    "tool_calls": 1,
+    "tool_calls_by_tool": {
+      "Agent": 1
+    },
+    "tool_failures": 0,
+    "tool_failures_by_tool": {},
+    "subagents": 1,
+    "compactions": 0,
+    "api_retries": 0,
+    "permission_denials": 0
+  },
+  "outcome": "ended",
+  "lifetime": {
+    "spec": "session-lifetime/1",
+    "anchor": "cs:1793825684600:5630",
+    "start_source": "startup",
+    "end_reason": "other",
+    "started_at": "2026-11-04T20:54:45.344Z",
+    "ended_at": "2026-11-04T20:54:50.216Z",
+    "cost_lineage": "1793825684600",
+    "cum_cost_start_usd": 0.0,
+    "cum_cost_end_usd": 0.0034037449999999997,
+    "forked_from_session_id": null,
+    "cleared_from_session_id": null,
+    "sprint_at_start": null,
+    "phase_at_start": null,
+    "head_at_start": null,
+    "concurrent": false,
+    "recovered": "none",
+    "coverage": {
+      "subagent_files": 1,
+      "subagent_launches_without_file": 0,
+      "copied_entries_excluded": 0,
+      "fork_parent": null,
+      "context": "observed",
+      "shortfall": []
+    }
+  },
+  "labels": {
+    "claude_code_version": "2.1.318",
+    "entrypoint": "sdk-cli"
+  }
+}

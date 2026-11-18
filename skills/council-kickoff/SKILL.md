@@ -98,7 +98,8 @@ Verify that the required hooks are registered in Claude Code's hook system:
 - `hooks/enforce-reversibility.sh` (or `hooks/win/enforce-reversibility.ps1`)
   must also be registered as a `PreToolUse` hook.
 - `hooks/log-tool-call.sh` (or `hooks/win/log-tool-call.ps1`) must be registered
-  as a `PostToolUse` hook.
+  as a `PostToolUse` hook. Registering it for `PostToolUseFailure` too logs failed
+  calls (recommended; not part of the self-check).
 - `hooks/session-stopped-marker.sh` (or `hooks/win/session-stopped-marker.ps1`)
   must be registered as a `Stop` hook.
 
@@ -158,16 +159,35 @@ the absolute path to the plugin install (e.g.
         ]
       }
     ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/log-tool-call.sh" }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
           { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-stopped-marker.sh" }
         ]
       }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-diagnostics.sh" }
+        ]
+      }
     ]
   }
 }
 ```
+
+The `SessionEnd` hook writes `.council/diagnostics.jsonl`: one event per settled
+process lifetime (ADR-0006 A1), as does `session-diagnostics.py --backfill`.
+Recommended but **optional**: diagnostics never gate the four-hook self-check.
 
 ##### 1d.2 — Registration snippet (Windows / PowerShell)
 
@@ -179,8 +199,9 @@ log entry format. The four PS1 paths are:
 
 - `hooks/win/enforce-append-only.ps1` (PreToolUse matcher: `Write|Edit`)
 - `hooks/win/enforce-reversibility.ps1` (PreToolUse matcher: `Bash`)
-- `hooks/win/log-tool-call.ps1` (PostToolUse matcher: `*`)
+- `hooks/win/log-tool-call.ps1` (PostToolUse and PostToolUseFailure, matcher: `*`)
 - `hooks/win/session-stopped-marker.ps1` (Stop hook)
+- `hooks/win/session-diagnostics.ps1` (SessionEnd hook, optional diagnostics sensor)
 
 ##### 1d.3 — What to do if hooks are missing
 

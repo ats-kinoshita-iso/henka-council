@@ -1,0 +1,6 @@
+# Byte-exact files: never convert their line endings on checkout (Windows CI runs
+# with core.autocrlf). The vendored diagnostic-event schema is hash-pinned by
+# tests/test-diagnostic-schema-drift.py; the transcript fixtures are recorded bytes
+# whose offsets and hook-time snapshots the session-diagnostics tests rely on.
+schemas/diagnostic-event.schema.json -text
+tests/fixtures/transcripts/** -text

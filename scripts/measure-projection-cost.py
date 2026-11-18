@@ -32,6 +32,7 @@ import json
 import pathlib
 import re
 import sys
+import time
 from typing import Optional
 
 DEFAULT_REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -108,6 +109,13 @@ def main(argv: Optional[list[str]] = None) -> int:
         help="Emit human-readable summary plus a GitHub Actions ::warning:: "
         "annotation when over budget. Cross-platform; intended for CI.",
     )
+    parser.add_argument(
+        "--emit-event",
+        action="store_true",
+        help="Append a kind=projection-cost diagnostic event to "
+        "<repo-root>/.council/diagnostics.jsonl when that directory exists "
+        "(ADR-0006 in cloud-catcher). Never creates the directory.",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -160,9 +168,54 @@ def main(argv: Optional[list[str]] = None) -> int:
             f"{total - args.budget} tokens"
         )
 
+    if args.emit_event:
+        emit_projection_event(args.repo_root, payload)
+
     if args.strict and over:
         return 1
     return 0
+
+
+def emit_projection_event(repo_root: pathlib.Path, payload: dict) -> bool:
+    """Append a projection-cost diagnostic event; True when one was written.
+
+    Writes only when <repo_root>/.council already exists, never creates it, and
+    never raises: diagnostics must not fail a measurement run.
+    """
+    council = repo_root / ".council"
+    if not council.is_dir():
+        return False
+    try:
+        import uuid
+        from datetime import datetime, timezone
+
+        event = {
+            "schema_version": "1.0",
+            "event_id": str(uuid.uuid4()),
+            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "source": "henkaten-council",
+            "kind": "projection-cost",
+            "project": repo_root.resolve().name,
+            "labels": {
+                "projected_tokens": str(payload["total_tokens"]),
+                "budget": str(payload["budget"]),
+                "over_budget": "true" if payload["over_budget"] else "false",
+                "files": str(len(payload["files"])),
+            },
+            "summary": (
+                f"always-projected set: {payload['total_tokens']} tokens "
+                f"against a budget of {payload['budget']}"
+            ),
+        }
+        # The session diagnostics append protocol: validated, under the ledger lock,
+        # one LF-terminated line after a newline repair (scripts/_diaglib.py).
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        import _diaglib as dl  # noqa: E402
+
+        return bool(dl.append_events(council / dl.LEDGER_NAME, [event], give_up_at=time.monotonic() + 10.0))
+    except Exception as exc:  # never fail the measurement because of diagnostics
+        print(f"WARNING: could not append projection-cost event: {exc}", file=sys.stderr)
+        return False
 
 
 if __name__ == "__main__":

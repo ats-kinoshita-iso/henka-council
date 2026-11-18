@@ -34,7 +34,7 @@ function New-NativePayload([string]$tool, [hashtable]$set) {
 }
 
 # --- Native payloads: BLOCK (exit 2) ---
-foreach ($log in 'henka-register', 'decision-log', 'audit-log') {
+foreach ($log in 'henka-register', 'decision-log', 'audit-log', 'diagnostics') {
     $code = Invoke-Hook (New-NativePayload 'Write' @{ file_path = "/work/proj/.council/$log.jsonl" })
     if ($code -eq 2) { Pass "native Write on .council/$log.jsonl is blocked (exit 2)" }
     else { Fail "native Write on .council/$log.jsonl should exit 2 (exit was $code)" }
