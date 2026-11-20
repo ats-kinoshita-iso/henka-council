@@ -9,7 +9,9 @@ For each tests/schemas/<name>/:
   - invalid/*.json MUST fail validation. If a sibling <name>.violation.md
     declares an "Expected jsonschema error keyword", the failure must include
     at least one error with that validator keyword — so a fixture fails for the
-    documented reason, not incidentally.
+    documented reason, not incidentally. A `false` (boolean) subschema is named
+    `false`. When the note also has a "Fails only on this keyword" section, every
+    error must carry that keyword: the fixture is otherwise valid.
 
 Run: python tests/test-schema-fixtures.py
 """
@@ -33,15 +35,20 @@ def fail(msg: str) -> None:
     print("FAIL: " + msg)
 
 
-def expected_keyword(json_path: pathlib.Path) -> str | None:
+def expected_keyword(json_path: pathlib.Path) -> tuple[str | None, bool]:
     vm = json_path.with_suffix(".violation.md")
     if not vm.exists():
-        return None
-    m = re.search(
-        r"Expected jsonschema error keyword\s*\n+\s*`([^`]+)`",
-        vm.read_text(encoding="utf-8"),
-    )
-    return m.group(1).strip() if m else None
+        return None, False
+    text = vm.read_text(encoding="utf-8")
+    m = re.search(r"Expected jsonschema error keyword\s*\n+\s*`([^`]+)`", text)
+    only = re.search(r"Fails only on this keyword\s*\n+\s*yes", text) is not None
+    return (m.group(1).strip() if m else None), only
+
+
+def keyword(error: object) -> str:
+    """The validator keyword of an error; a boolean `false` subschema is 'false'."""
+    validator = getattr(error, "validator", None)
+    return "false" if validator is None else str(validator)
 
 
 def main() -> int:
@@ -65,10 +72,12 @@ def main() -> int:
             if not errs:
                 fail(f"{sdir.name}/invalid/{f.name} should FAIL but validated clean")
                 continue
-            kw = expected_keyword(f)
-            if kw and not any(e.validator == kw for e in errs):
-                got = sorted({str(e.validator) for e in errs})
+            kw, only = expected_keyword(f)
+            got = sorted({keyword(e) for e in errs})
+            if kw and kw not in got:
                 fail(f"{sdir.name}/invalid/{f.name} fails on {got}, but .violation.md expects '{kw}'")
+            elif kw and only and got != [kw]:
+                fail(f"{sdir.name}/invalid/{f.name} fails on {got}, but should fail only on '{kw}'")
 
     print(f"\nchecked {checked} fixtures across {len(list(FIXTURES.iterdir()))} schema dirs")
     if errors:

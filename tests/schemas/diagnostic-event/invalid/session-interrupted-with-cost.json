@@ -1,0 +1,86 @@
+{
+  "schema_version": "1.1",
+  "event_id": "6e9304dd-93e4-5efa-9c91-ac996520df3e",
+  "ts": "2026-11-04T20:50:14.000Z",
+  "source": "claude-code-session",
+  "kind": "session",
+  "project": "henka-council",
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "sprint": 9,
+  "phase": 2,
+  "git_branch": "branch-1",
+  "head": "4c1d9e0b7a2f6e3d8c5b1a0f9e8d7c6b5a4f3e2d",
+  "model": "model-a",
+  "effort": "medium",
+  "usage": {
+    "input_tokens": 6,
+    "output_tokens": 524,
+    "cache_read_input_tokens": 51286,
+    "cache_creation_input_tokens": 4670
+  },
+  "usage_by_model": {
+    "model-a": {
+      "input_tokens": 6,
+      "output_tokens": 524,
+      "cache_read_input_tokens": 51286,
+      "cache_creation_input_tokens": 4670
+    }
+  },
+  "sidechain_usage": {
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation_input_tokens": 0
+  },
+  "cost_usd": 0.00092135,
+  "cost_source": "claude-code-estimate",
+  "duration_ms": null,
+  "api_duration_ms": null,
+  "thinking_duration_ms": 1183,
+  "num_turns": 1,
+  "counts": {
+    "tool_calls": 2,
+    "tool_calls_by_tool": {
+      "Bash": 2
+    },
+    "tool_failures": 1,
+    "tool_failures_by_tool": {
+      "Bash": 1
+    },
+    "subagents": 0,
+    "compactions": 0,
+    "api_retries": 0,
+    "permission_denials": 0
+  },
+  "outcome": "interrupted",
+  "lifetime": {
+    "spec": "session-lifetime/1",
+    "anchor": "open:e0000016-0000-4000-8000-000000000000",
+    "start_source": "resume",
+    "end_reason": "none",
+    "started_at": "2026-11-04T20:50:08.816Z",
+    "ended_at": "2026-11-04T20:50:14.000Z",
+    "cost_lineage": "1793825405227",
+    "cum_cost_start_usd": 0.00144132,
+    "cum_cost_end_usd": null,
+    "forked_from_session_id": null,
+    "cleared_from_session_id": null,
+    "sprint_at_start": null,
+    "phase_at_start": null,
+    "head_at_start": null,
+    "concurrent": false,
+    "recovered": "at_start",
+    "coverage": {
+      "subagent_files": 0,
+      "subagent_launches_without_file": 0,
+      "copied_entries_excluded": 0,
+      "fork_parent": null,
+      "context": "observed",
+      "shortfall": []
+    }
+  },
+  "labels": {
+    "claude_code_version": "2.1.318",
+    "entrypoint": "sdk-cli"
+  }
+}

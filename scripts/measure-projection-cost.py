@@ -3,7 +3,7 @@
 The "always-projected" set for the henkaten-council plugin is:
   - CLAUDE.md (Claude Code root convention; auto-loaded for any session in
     a directory that contains it)
-  - Files listed in .claude-plugin/plugin.json under "skills"
+  - The SKILL.md of each directory listed in .claude-plugin/plugin.json under "skills"
   - Files listed in .claude-plugin/plugin.json under "agents"
 
 These files consume working context every time a council skill runs. Without
@@ -32,6 +32,7 @@ import json
 import pathlib
 import re
 import sys
+import time
 from typing import Optional
 
 DEFAULT_REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -54,7 +55,11 @@ def discover_always_projected_files(repo_root: pathlib.Path) -> list[pathlib.Pat
     if plugin_manifest.exists():
         manifest = json.loads(plugin_manifest.read_text(encoding="utf-8-sig"))
         for relpath in manifest.get("skills", []):
-            files.append(repo_root / relpath)
+            # Claude Code requires each skills entry to be a directory containing
+            # SKILL.md (with a "./" prefix); the projected file is that SKILL.md.
+            # A legacy entry naming the file itself is still accepted.
+            path = repo_root / relpath
+            files.append(path / "SKILL.md" if path.is_dir() else path)
         for relpath in manifest.get("agents", []):
             files.append(repo_root / relpath)
     return files
@@ -103,6 +108,13 @@ def main(argv: Optional[list[str]] = None) -> int:
         action="store_true",
         help="Emit human-readable summary plus a GitHub Actions ::warning:: "
         "annotation when over budget. Cross-platform; intended for CI.",
+    )
+    parser.add_argument(
+        "--emit-event",
+        action="store_true",
+        help="Append a kind=projection-cost diagnostic event to "
+        "<repo-root>/.council/diagnostics.jsonl when that directory exists "
+        "(ADR-0006 in cloud-catcher). Never creates the directory.",
     )
     args = parser.parse_args(argv)
 
@@ -156,9 +168,54 @@ def main(argv: Optional[list[str]] = None) -> int:
             f"{total - args.budget} tokens"
         )
 
+    if args.emit_event:
+        emit_projection_event(args.repo_root, payload)
+
     if args.strict and over:
         return 1
     return 0
+
+
+def emit_projection_event(repo_root: pathlib.Path, payload: dict) -> bool:
+    """Append a projection-cost diagnostic event; True when one was written.
+
+    Writes only when <repo_root>/.council already exists, never creates it, and
+    never raises: diagnostics must not fail a measurement run.
+    """
+    council = repo_root / ".council"
+    if not council.is_dir():
+        return False
+    try:
+        import uuid
+        from datetime import datetime, timezone
+
+        event = {
+            "schema_version": "1.0",
+            "event_id": str(uuid.uuid4()),
+            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "source": "henkaten-council",
+            "kind": "projection-cost",
+            "project": repo_root.resolve().name,
+            "labels": {
+                "projected_tokens": str(payload["total_tokens"]),
+                "budget": str(payload["budget"]),
+                "over_budget": "true" if payload["over_budget"] else "false",
+                "files": str(len(payload["files"])),
+            },
+            "summary": (
+                f"always-projected set: {payload['total_tokens']} tokens "
+                f"against a budget of {payload['budget']}"
+            ),
+        }
+        # The session diagnostics append protocol: validated, under the ledger lock,
+        # one LF-terminated line after a newline repair (scripts/_diaglib.py).
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        import _diaglib as dl  # noqa: E402
+
+        return bool(dl.append_events(council / dl.LEDGER_NAME, [event], give_up_at=time.monotonic() + 10.0))
+    except Exception as exc:  # never fail the measurement because of diagnostics
+        print(f"WARNING: could not append projection-cost event: {exc}", file=sys.stderr)
+        return False
 
 
 if __name__ == "__main__":

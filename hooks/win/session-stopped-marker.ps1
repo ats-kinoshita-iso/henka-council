@@ -42,6 +42,12 @@ try {
     # ignore
 }
 
+# Crew guard (ADR-0006 A1 D1.9): an auto-mate crew or gate commits whatever it
+# leaves behind, so with AUTOMATE_RUN set the council writes nothing.
+if ($env:AUTOMATE_RUN) {
+    exit 0
+}
+
 # Anchor the progress-marker path to the project root unless an explicit override was given.
 if (-not $TargetFile) {
     $TargetFile = (Get-CouncilProjectRoot).TrimEnd('/', '\') + '/.harness/progress.md'

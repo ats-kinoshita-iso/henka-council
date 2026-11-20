@@ -1,0 +1,29 @@
+[
+ {
+  "snapshot": "snapshots/01-session-end.jsonl",
+  "transcript": "projects/-work-proj/00000000-0000-4000-8000-000000000001.jsonl",
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "reason": "other",
+  "prompt_id": "p0000002-0000-4000-8000-000000000000",
+  "pid": "1001",
+  "lines": 44
+ },
+ {
+  "snapshot": "snapshots/02-session-end.jsonl",
+  "transcript": "projects/-work-proj/00000000-0000-4000-8000-000000000002.jsonl",
+  "session_id": "00000000-0000-4000-8000-000000000002",
+  "reason": "other",
+  "prompt_id": "p0000004-0000-4000-8000-000000000000",
+  "pid": "1002",
+  "lines": 46
+ },
+ {
+  "snapshot": "snapshots/03-session-end.jsonl",
+  "transcript": "projects/-work-proj/00000000-0000-4000-8000-000000000001.jsonl",
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "reason": "other",
+  "prompt_id": "p0000003-0000-4000-8000-000000000000",
+  "pid": "1003",
+  "lines": 57
+ }
+]

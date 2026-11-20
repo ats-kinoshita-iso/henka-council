@@ -169,6 +169,105 @@ else
     fail "Audit log walk-up anchoring failed (nested .council/.council or canonical path missing)"
 fi
 
+# --- Test 6: Native payload (tool_input, session_id, tool_use_id) into an initialized council ---
+PROJ6="${TMPDIR_TEST}/proj6"
+mkdir -p "$PROJ6/.council" "$PROJ6/.git" "$PROJ6/src"
+envelope='{"hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{"file_path":"src/app.py","old_string":"a","new_string":"b"},"tool_response":{"filePath":"src/app.py","success":true},"cwd":"'"$PROJ6"'/src","session_id":"sess-native-6","tool_use_id":"toolu_006"}'
+( unset CLAUDE_PROJECT_DIR; echo "$envelope" | AUDIT_LOG_PATH="" bash "$REPO/$HOOK" ) >/dev/null 2>&1
+python3 - "$PROJ6/.council/audit-log.jsonl" <<'PYEOF'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])
+assert p.exists(), "audit log not written for native payload"
+e = json.loads(p.read_text(encoding="utf-8").splitlines()[-1])
+assert e["tool_input_summary"] == "file_path=src/app.py", e["tool_input_summary"]
+assert e["session_id"] == "sess-native-6" and e["tool_use_id"] == "toolu_006", e
+assert e["andon_pull_count"] is None, e["andon_pull_count"]
+assert e["tool_outcome"] == "success" and e["event_type"] == "tool-call", e
+import jsonschema
+schema = json.loads(pathlib.Path("schemas/audit-log-entry.schema.json").read_text(encoding="utf-8"))
+jsonschema.Draft7Validator(schema).validate(e)
+print("NATIVE ENTRY VALID")
+PYEOF
+if (( $? == 0 )); then pass "Native payload: real file_path, session_id, tool_use_id, null andon count, schema-valid"; else fail "Native payload entry wrong or invalid"; fi
+
+# --- Test 7: No .council at the root -> nothing written, nothing created ---
+PROJ7="${TMPDIR_TEST}/proj7"
+mkdir -p "$PROJ7/.git" "$PROJ7/sub"
+envelope='{"tool_name":"Read","tool_input":{"file_path":"README.md"},"cwd":"'"$PROJ7"'/sub","session_id":"s7"}'
+( unset CLAUDE_PROJECT_DIR; echo "$envelope" | AUDIT_LOG_PATH="" bash "$REPO/$HOOK" ) >/dev/null 2>&1
+if [[ ! -e "$PROJ7/.council" ]]; then pass "No .council: no phantom directory, nothing written"; else fail "Phantom .council created in an uninitialized project"; fi
+
+# --- Test 8: andon_signal in a tool response is logged as an andon-signal event ---
+PROJ8="${TMPDIR_TEST}/proj8"
+mkdir -p "$PROJ8/.council" "$PROJ8/.git"
+envelope='{"tool_name":"Task","tool_input":{"prompt":"review"},"tool_response":{"content":"{\"andon_signal\":{\"type\":\"stop\"}}"},"cwd":"'"$PROJ8"'","session_id":"s8","tool_use_id":"toolu_008"}'
+( unset CLAUDE_PROJECT_DIR; echo "$envelope" | AUDIT_LOG_PATH="" bash "$REPO/$HOOK" ) >/dev/null 2>&1
+if grep -q '"event_type": "andon-signal"' "$PROJ8/.council/audit-log.jsonl" 2>/dev/null; then pass "andon_signal in tool response -> event_type andon-signal"; else fail "andon signal not detected"; fi
+
+# --- Tests 9-13: andon detection reads only the agent's reply (review C06); failures are logged (C05) ---
+# One fresh project per payload; prints the last audit entry as JSON.
+log_entry() {
+    local proj="${TMPDIR_TEST}/$1"; mkdir -p "$proj/.council" "$proj/.git"
+    printf '%s' "$2" | sed "s#@PROJ@#$proj#g" | ( unset CLAUDE_PROJECT_DIR; AUDIT_LOG_PATH="" bash "$REPO/$HOOK" ) >/dev/null 2>&1
+    tail -n 1 "$proj/.council/audit-log.jsonl" 2>/dev/null
+}
+check_entry() {  # check_entry <desc> <entry-json> <python assertions over e>
+    printf '%s' "$2" | python3 -c '
+import json, pathlib, sys
+e = json.loads(sys.stdin.read())
+'"$3"'
+import jsonschema
+schema = json.loads(pathlib.Path("schemas/audit-log-entry.schema.json").read_text(encoding="utf-8"))
+jsonschema.Draft7Validator(schema).validate(e)
+' && pass "$1" || fail "$1"
+}
+
+# Test 8 again, with the recorded type: a reply that is a signal object.
+check_entry "Task reply {andon_signal:{type:stop}} -> andon-signal, type stop" \
+    "$(tail -n 1 "$PROJ8/.council/audit-log.jsonl")" \
+    'assert e["event_type"] == "andon-signal" and e["andon_signal_type"] == "stop" and e["andon_issuer"] == "unknown", e'
+
+# Test 9: an async Agent launch. The dispatch envelope names the signal in the prompt,
+# and the Agent tool echoes the prompt back in tool_response.prompt. Not a signal.
+ENVELOPE='Obligations: instructions/andon-protocol.md: the agent may issue `andon_signal: alert` or `andon_signal: stop` at any time. You MAY issue an `andon_signal: alert | stop` if you detect a blocking condition.'
+p9='{"hook_event_name":"PostToolUse","tool_name":"Agent","tool_input":{"subagent_type":"scope-guardian","prompt":"'"$ENVELOPE"'"},"tool_response":{"agentId":"a9","isAsync":true,"status":"async_launched","prompt":"'"$ENVELOPE"'"},"cwd":"@PROJ@","session_id":"s9","tool_use_id":"toolu_009"}'
+check_entry "dispatch prompt naming andon_signal (input and echoed prompt) -> tool-call" \
+    "$(log_entry proj9 "$p9")" \
+    'assert e["event_type"] == "tool-call" and "andon_signal_type" not in e, e'
+
+# Test 10: reading the protocol document is not a signal.
+p10='{"hook_event_name":"PostToolUse","tool_name":"Read","tool_input":{"file_path":"instructions/andon-protocol.md"},"tool_response":{"type":"text","file":{"content":"andon_signal: stop halts the sprint"}},"cwd":"@PROJ@","session_id":"s10"}'
+check_entry "Read of the andon protocol -> tool-call" \
+    "$(log_entry proj10 "$p10")" \
+    'assert e["event_type"] == "tool-call", e'
+
+# Test 10b: a non-agent tool whose result text carries the phrase (an MCP fetch of a doc).
+p10b='{"hook_event_name":"PostToolUse","tool_name":"mcp__srv1__fetch","tool_input":{"url":"x"},"tool_response":{"content":[{"type":"text","text":"andon_signal: stop"}]},"cwd":"@PROJ@","session_id":"s10b"}'
+check_entry "non-agent tool result naming a signal -> tool-call" \
+    "$(log_entry proj10b "$p10b")" \
+    'assert e["event_type"] == "tool-call", e'
+
+# Test 11: a foreground Agent reply raising a signal: type and issuer recorded.
+p11='{"hook_event_name":"PostToolUse","tool_name":"Agent","tool_input":{"subagent_type":"scope-guardian","prompt":"review"},"tool_response":{"content":[{"type":"text","text":"The contract drops criterion 3.\nandon_signal: alert\nreason: scope drift"}],"agentId":"a11","agentType":"scope-guardian"},"cwd":"@PROJ@","session_id":"s11"}'
+check_entry "Agent reply 'andon_signal: alert' -> andon-signal, type alert, issuer scope-guardian" \
+    "$(log_entry proj11 "$p11")" \
+    'assert e["event_type"] == "andon-signal" and e["andon_signal_type"] == "alert" and e["andon_issuer"] == "scope-guardian", e'
+
+# Test 12: a failed Bash call, PostToolUseFailure payload as recorded on Claude Code 2.1.318
+# (error and is_interrupt, no tool_response).
+p12='{"hook_event_name":"PostToolUseFailure","tool_name":"Bash","tool_input":{"command":"false","description":"Run false"},"error":"Exit code 1","is_interrupt":false,"permission_mode":"default","cwd":"@PROJ@","session_id":"s12","tool_use_id":"toolu_012"}'
+check_entry "PostToolUseFailure -> tool_outcome error" \
+    "$(log_entry proj12 "$p12")" \
+    'assert e["tool_outcome"] == "error" and e["event_type"] == "tool-call" and e["tool_use_id"] == "toolu_012", e'
+
+# Test 13: hooks.json routes PostToolUseFailure to the logger, as it does PostToolUse.
+python3 - <<'PY13' && pass "hooks.json registers log-tool-call for PostToolUse and PostToolUseFailure (matcher *)" || fail "hooks.json does not register log-tool-call for both events"
+import json
+h = json.load(open("hooks/hooks.json"))["hooks"]
+for ev in ("PostToolUse", "PostToolUseFailure"):
+    assert any(g.get("matcher") == "*" and any("log-tool-call.sh" in x.get("command", "") for x in g["hooks"]) for g in h[ev]), ev
+PY13
+
 # --- Results ---
 echo ""
 if (( ERRORS == 0 )); then
