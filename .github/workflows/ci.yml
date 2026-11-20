@@ -62,6 +62,9 @@ jobs:
       - name: Run direction-check replay test (Layer A)
         run: python tests/scripts/test-direction-check.py
 
+      - name: Run direction-check GitHub Action template test
+        run: python tests/scripts/test-direction-check-action.py
+
       - name: Run diagnostic-event schema drift test (pin and hash; the upstream comparison needs a cloud-catcher checkout)
         run: python tests/test-diagnostic-schema-drift.py
 

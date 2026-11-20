@@ -113,11 +113,83 @@ def main() -> int:
     except ImportError:
         print("SKIP: jsonschema not installed; emit-henka validity not checked")
 
+    regression_tests()
+
     if failures:
         print(f"\n{len(failures)} assertion(s) failed.")
         return 1
     print("\nAll direction-check Layer A assertions passed.")
     return 0
+
+
+def run_argv(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run([sys.executable, str(SCRIPT), *args], capture_output=True, text=True)
+
+
+def regression_tests() -> None:
+    """Cases from the 2026-08-19 review of PR #27."""
+    import json as _json
+    import tempfile
+
+    tmp = pathlib.Path(tempfile.mkdtemp())
+    cfg = _json.loads((FIX / "config.json").read_text())
+
+    # Gate off (or no config at all) -> PASS, even on a divergent branch with
+    # no charter: a repo that vendors the script with the gate off is not blocked.
+    off = tmp / "config-off.json"
+    off.write_text(_json.dumps({"direction_check": {**cfg["direction_check"], "enabled": False}}))
+    p = run_argv("--config", str(off), "--branch", "claude/side", "--ci")
+    check("gate disabled -> PASS on a divergent branch", p.returncode, PASS_CODE, p)
+    p = run_argv("--config", str(tmp / "missing.json"), "--branch", "claude/side", "--ci")
+    check("no config file -> PASS on a divergent branch", p.returncode, PASS_CODE, p)
+
+    # No charter: content checks still run. A mainline contract reintroducing a
+    # killed workstream BLOCKs instead of stopping at the no-charter WARN.
+    p = run(charter=None, spec="spec-pre-rescope.md", contract="contract-pre-rescope.md", branch="main")
+    check("no charter + killed workstream in contract on mainline -> BLOCK", p.returncode, BLOCK_CODE, p)
+
+    # The charter's strategic_anchor.locked_decisions count as citations.
+    cfg2 = tmp / "config-no-locked.json"
+    cfg2.write_text(_json.dumps({"direction_check": {
+        "enabled": True, "anchor_path": "docs/other-anchor.md",
+        "killed_workstreams": [], "mainline_branch": "main"}}))
+    charter = tmp / "charter-locked.json"
+    charter.write_text(_json.dumps({
+        "charter_id": "WC-0060", "created_at": "2026-11-20T00:00:00Z",
+        "strategic_anchor": {"path": "docs/other-anchor.md", "locked_decisions": ["ADR-0042"]},
+        "workstream_scope": ["export"], "exploration_mode": "mainline"}))
+    contract = tmp / "contract-cites-adr.md"
+    contract.write_text("# Sprint\nHonors ADR-0042.\n")
+    p = run_argv("--config", str(cfg2), "--charter", str(charter), "--contract", str(contract), "--branch", "main")
+    check("charter-level locked_decisions cited -> PASS", p.returncode, PASS_CODE, p)
+
+    # Killed-workstream keywords match whole words only.
+    for text, want, label in [
+        ("Cites ADR-0008. Build the syncmpx writer.", PASS_CODE, "'syncmpx writer' does not match 'cmpx writer'"),
+        ("Cites ADR-0008. Build the cmpx writers module.", BLOCK_CODE, "'cmpx writers' matches 'cmpx writer' (open trailing edge)"),
+        ("Cites ADR-0008. Build the `.cmpx` writer.", BLOCK_CODE, "'`.cmpx` writer' matches 'cmpx writer'"),
+        ("Cites ADR-0008. Build the cmpx_writer.", BLOCK_CODE, "'cmpx_writer' matches 'cmpx writer'"),
+    ]:
+        c = tmp / "contract-boundary.md"
+        c.write_text(text + "\n")
+        p = run_argv("--config", str(FIX / "config.json"), "--charter", str(FIX / "charter-mainline-post.json"),
+                     "--contract", str(c), "--branch", "main")
+        check(f"word boundary: {label}", p.returncode, want, p)
+
+    # --auto-contract resolves .harness/contracts/sprint-{NN}.md under --root.
+    root = tmp / "proj"
+    (root / ".harness" / "contracts").mkdir(parents=True)
+    (root / ".harness" / "contracts" / "sprint-07.md").write_text(
+        (FIX / "contract-pre-rescope.md").read_text())
+    (root / ".harness" / "contracts" / "sprint-07.tasks.json").write_text("{}")
+    ch = tmp / "charter-s7.json"
+    ch.write_text(_json.dumps({**_json.loads((FIX / "charter-mainline-pre.json").read_text()), "sprint_context": 7}))
+    p = run_argv("--config", str(FIX / "config.json"), "--charter", str(ch), "--branch", "claude/s7",
+                 "--root", str(root), "--auto-contract")
+    check("--auto-contract finds sprint-07.md from sprint_context 7 -> BLOCK", p.returncode, BLOCK_CODE, p)
+    p = run_argv("--config", str(FIX / "config.json"), "--charter", str(ch), "--branch", "claude/s7",
+                 "--root", str(root))
+    check("without --auto-contract the contract is not read -> no content BLOCK", p.returncode, PASS_CODE, p)
 
 
 if __name__ == "__main__":

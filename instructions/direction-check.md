@@ -42,7 +42,16 @@ grader hierarchy:
   and declaration tripwires: charter present? mode declared? anchor cited?
   known-killed workstream reintroduced? divergent mode justified? Exit codes
   encode the tier (0 PASS / 10 WARN / 20 BLOCK). Layer A runs on the surfaces
-  that cannot call a model: the **git hook** and **CI**.
+  that cannot call a model: the **git hook** and **CI**. Both pass
+  `--auto-contract`, which reads `.harness/contracts/sprint-{NN}.md` for the
+  charter's `sprint_context` (or the highest-numbered contract when there is no
+  charter or no `sprint_context`), so the killed-workstream check runs there
+  too. The script exits 0 (PASS) unless `direction_check.enabled` is true.
+  Without a charter the content checks still run, with the work treated as
+  undeclared mainline work. Killed-workstream keywords match from a word start
+  (`syncmpx writer` does not match `cmpx writer`; `cmpx writers` does). The
+  charter's `strategic_anchor.path` and `locked_decisions` count as anchor
+  citations alongside the config's `anchor_path` and `locked_decisions`.
 - **Layer B — `agents/direction-guardian.md` (LLM judge, in-session).** Reads the
   anchor's locked decisions/prohibitions and the proposed contract and judges
   semantic alignment, catching paraphrased/novel drift Layer A cannot see. Runs

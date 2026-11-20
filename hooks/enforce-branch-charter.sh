@@ -8,8 +8,13 @@
 # returns BLOCK, the commit is blocked. Declared parallel/competitive charters
 # (with a justification) only WARN. Fails OPEN whenever it cannot decide.
 #
+# Layer A gets the spec (.harness/spec.md) and the sprint contract, resolved
+# by convention (--auto-contract), so its content checks run here too.
+#
 # Reads the Claude Code tool-call envelope JSON from stdin.
-# Exit 0 = allow. Non-zero = block.
+# Exit 0 = allow. Exit 2 = block: Claude Code blocks a PreToolUse call only on
+# exit 2 (any other non-zero code is a non-blocking error and the call
+# proceeds); stderr is shown to the model as the reason.
 
 set -uo pipefail
 
@@ -53,7 +58,12 @@ _council_project_root() {
 tool_name=$(_json_get "$envelope" ".tool_name")
 [[ "$tool_name" != "Bash" ]] && exit 0
 
-command_str=$(_json_get "$envelope" ".tool_args.command")
+# Claude Code sends the tool arguments as tool_input; tool_args is the legacy
+# envelope shape, still accepted (two lookups: the python3 fallback has no "//").
+command_str=$(_json_get "$envelope" ".tool_input.command")
+if [[ -z "$command_str" ]]; then
+    command_str=$(_json_get "$envelope" ".tool_args.command")
+fi
 # Only inspect commit / new-branch operations.
 echo "$command_str" | grep -qE 'git[[:space:]]+(commit|checkout[[:space:]]+-b|switch[[:space:]]+-c)' || exit 0
 
@@ -108,15 +118,21 @@ else:
     [[ -n "$match" ]] && charter_arg=(--charter "$match")
 fi
 
-python3 "$script" --config "$config" --branch "$branch" "${charter_arg[@]}" >/dev/null 2>&1
-rc=$?
+spec_arg=()
+[[ -f "$root/.harness/spec.md" ]] && spec_arg=(--spec "$root/.harness/spec.md")
+
+rc=0
+python3 "$script" --config "$config" --branch "$branch" --root "$root" --auto-contract \
+    "${charter_arg[@]}" "${spec_arg[@]}" >/dev/null 2>&1 || rc=$?
 
 if (( rc >= 20 )); then
-    echo "BLOCKED: branch '${branch}' diverges from mainline '${mainline}' without a sanctioned work charter." >&2
+    echo "BLOCKED: direction-check Layer A returned BLOCK on branch '${branch}' (mainline '${mainline}')." >&2
+    echo "  Either the branch has no sanctioned work charter, or its sprint contract reintroduces a killed workstream." >&2
+    echo "  Run: python3 \"$script\" --config \"$config\" --branch \"$branch\" --root \"$root\" --auto-contract  (for the findings)" >&2
     echo "  Declare intent with: /henkaten-council:council-charter --mode parallel-exploration|competitive" >&2
-    echo "  (Direction-check Layer A returned BLOCK. Set direction_check.tier_overrides to soften.)" >&2
-    exit 1
+    echo "  (Set direction_check.tier_overrides to soften.)" >&2
+    exit 2
 elif (( rc >= 10 )); then
-    echo "WARN: branch '${branch}' diverges from mainline '${mainline}'; declared exploration recorded." >&2
+    echo "WARN: direction-check Layer A returned WARN on branch '${branch}' (mainline '${mainline}')." >&2
 fi
 exit 0

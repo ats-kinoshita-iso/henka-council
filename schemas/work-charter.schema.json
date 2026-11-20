@@ -51,7 +51,7 @@
         "locked_decisions": {
           "type": "array",
           "items": {"type": "string"},
-          "description": "Identifiers of binding decisions the work must honor, e.g. ['ADR-0008']."
+          "description": "Identifiers of binding decisions the work must honor, e.g. ['ADR-0008']. Layer A (direction-check.py) accepts a mention of any of these, or of the anchor file name, in the spec or contract as the anchor citation (check 2), alongside the config-level direction_check.locked_decisions."
         }
       },
       "additionalProperties": false
