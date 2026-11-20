@@ -244,6 +244,65 @@ and PDCA pathways.
 
 ---
 
+## Step 1A.7 — Direction Check (work-start gate)
+
+*Source: direction-check track. See `@instructions/direction-check.md`.*
+
+**Purpose:** before delegating the sprint, verify the upcoming work is reconciled
+with the project's strategic anchor — the check that, had it existed, would have
+caught the bay-o-net `.cmpx`-writer-against-"no-writer" drift at work-start
+instead of three sprints later (`YK-0001`).
+
+**Gate condition.** Runs only when `.council/config.json` has
+`direction_check.enabled: true`. When absent/false, skip this step entirely
+(the gate is off by default).
+
+### 1A.7.1 — Layer A (deterministic, cheap)
+
+Run the deterministic tripwires and read the exit tier (0 PASS / 10 WARN / 20 BLOCK):
+
+```
+python scripts/direction-check.py \
+  --config .council/config.json \
+  --charter .council/charters/sprint-{NN}.json \
+  --spec .harness/spec.md \
+  --contract .harness/contracts/sprint-{NN}.md \
+  --branch "$(git branch --show-current)"
+```
+
+If no charter exists for this work, surface that the operator should author one
+with `/henkaten-council:council-charter` (a divergent branch with no charter is a
+Layer A BLOCK).
+
+### 1A.7.2 — Layer B (semantic judge)
+
+Dispatch the **`direction-guardian`** agent (fork context, Level 1). It reads the
+anchor's locked decisions/prohibitions and the proposed contract and judges
+semantic alignment — catching paraphrased/novel drift Layer A cannot see. Treat
+the anchor as the reference of record; **multi-sample any BLOCK** (via the
+harness `trials` mechanism) before halting so a single low-confidence sample does
+not block on its own.
+
+### 1A.7.3 — Apply the tier
+
+- **PASS** → write the verdict into the charter's `direction_check` block; proceed
+  to Step 1B.
+- **WARN** (declared parallel/competitive divergence, or missing anchor citation)
+  → log a henka-record (`fourM_axis: Method`, `category: scope-change`,
+  `change_origin: active`, `impact_level: actionable`) via
+  `scripts/append-henka.py`; attach as context; proceed. If GitHub integration is
+  on, ensure the PR is labelled by `exploration_mode`.
+- **BLOCK** (undeclared mainline drift / unjustified divergence) → issue
+  `andon_signal: stop` per `@instructions/andon-protocol.md`, log a `blocking`
+  henka-record, and **do NOT delegate the sprint** (jump to Step 1F). Resolve by
+  reconciling the work with the anchor or declaring the correct `exploration_mode`
+  plus a `divergence_justification`, then re-run this step.
+
+The written verdict in the charter is what the trine-eval seam
+(`harness-sprint` Step 0.4) reads — trine-eval never executes council code.
+
+---
+
 ## Step 1B — Delegate to /trine-eval:harness-sprint
 
 *Source: §8.2 Step 1B*

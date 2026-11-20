@@ -1,0 +1,6 @@
+{
+  "charter_id": "WC-0002",
+  "created_at": "2026-06-20T10:00:00Z",
+  "workstream_scope": ["yaml-writer"],
+  "exploration_mode": "mainline"
+}

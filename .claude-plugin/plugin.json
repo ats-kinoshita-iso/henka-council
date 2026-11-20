@@ -10,10 +10,12 @@
   "min_claude_code_version": "0.3.0",
   "skills": [
     "./skills/council-kickoff",
-    "./skills/from-plan"
+    "./skills/from-plan",
+    "./skills/council-charter"
   ],
   "agents": [
     "./agents/orchestrator.md",
-    "./agents/architect.md"
+    "./agents/architect.md",
+    "./agents/direction-guardian.md"
   ]
 }
