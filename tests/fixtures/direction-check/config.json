@@ -1,0 +1,10 @@
+{
+  "direction_check": {
+    "enabled": true,
+    "anchor_path": "docs/divorce-spec.md",
+    "locked_decisions": ["ADR-0008"],
+    "killed_workstreams": ["cmpx writer", "cmpx parser refactor"],
+    "mainline_branch": "main",
+    "tier_overrides": {}
+  }
+}

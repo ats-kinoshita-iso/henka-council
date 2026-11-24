@@ -34,6 +34,7 @@ jobs:
           set -e
           bash tests/hooks/test-enforce-append-only.sh
           bash tests/hooks/test-enforce-reversibility.sh
+          bash tests/hooks/test-enforce-branch-charter.sh
           bash tests/hooks/test-log-tool-call.sh
           bash tests/hooks/test-rotate-audit-log.sh
           bash tests/hooks/test-session-diagnostics.sh
@@ -57,6 +58,12 @@ jobs:
 
       - name: Run schema fixture suite (valid/invalid)
         run: python tests/test-schema-fixtures.py
+
+      - name: Run direction-check replay test (Layer A)
+        run: python tests/scripts/test-direction-check.py
+
+      - name: Run direction-check GitHub Action template test
+        run: python tests/scripts/test-direction-check-action.py
 
       - name: Run diagnostic-event schema drift test (pin and hash; the upstream comparison needs a cloud-catcher checkout)
         run: python tests/test-diagnostic-schema-drift.py

@@ -131,6 +131,67 @@
       "items": {
         "type": "string"
       }
+    },
+    "direction_check": {
+      "type": "object",
+      "description": "Configuration for the work-start direction gate (scripts/direction-check.py Layer A + the direction-guardian agent Layer B). Flags work that diverges from the strategic anchor. Absent/disabled = the gate is inert (off by default).",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Master switch. When false or absent, the direction gate does nothing."
+        },
+        "anchor_path": {
+          "type": "string",
+          "description": "Repo-relative path to the strategic-anchor document, e.g. docs/divorce-spec.md. Drift from this doc is the failure the gate catches."
+        },
+        "locked_decisions": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Binding decision identifiers a contract should cite, e.g. ['ADR-0008']."
+        },
+        "killed_workstreams": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Retired/forbidden workstream keywords. Reintroducing one on mainline/undeclared work BLOCKS. Keep these specific (e.g. 'cmpx writer', not 'writer') to avoid false positives on sanctioned work."
+        },
+        "mainline_branch": {
+          "type": "string",
+          "default": "main",
+          "description": "The sanctioned-direction branch. Work on any other branch is 'divergent' and must carry a charter declaring its exploration_mode."
+        },
+        "enforcement": {
+          "type": "string",
+          "enum": ["warn", "block"],
+          "default": "block",
+          "description": "Tier applied to the trine-eval seam: 'block' aborts the sprint on a BLOCK verdict; 'warn' only surfaces it. The in-session council gate always honors the per-check tiers."
+        },
+        "tier_overrides": {
+          "type": "object",
+          "description": "Per-check severity overrides, mapping a check id (e.g. 'missing_anchor_citation', 'killed_workstream_mainline', 'no_charter_divergent_branch') to 'pass' | 'warn' | 'block'.",
+          "additionalProperties": {
+            "type": "string",
+            "enum": ["pass", "warn", "block"]
+          }
+        },
+        "github": {
+          "type": "object",
+          "description": "Surface 3 (GitHub) settings.",
+          "properties": {
+            "open_draft_pr": {
+              "type": "boolean",
+              "default": false,
+              "description": "When true, the in-session gate opens a draft PR carrying the charter + verdict at work-start."
+            },
+            "workflow": {
+              "type": "string",
+              "description": "Name of the installed direction-check GitHub Action workflow file."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

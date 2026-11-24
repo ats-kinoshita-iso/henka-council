@@ -1,0 +1,14 @@
+{
+  "charter_id": "WC-0013",
+  "sprint_context": 13,
+  "branch": "main",
+  "created_at": "2026-05-20T22:30:00Z",
+  "created_by": "architect",
+  "strategic_anchor": {
+    "path": "docs/divorce-spec.md",
+    "cited_section": "Phase 2 direction (YAML canonical)",
+    "locked_decisions": ["ADR-0008"]
+  },
+  "workstream_scope": ["yaml-writer"],
+  "exploration_mode": "mainline"
+}
